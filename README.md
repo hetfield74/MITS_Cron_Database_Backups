@@ -4,12 +4,12 @@ Sichern Sie mit unserem kostenlosen Modul automatisch und regelmäßig die Daten
 Mit diesem Modul kann man die Datenbank der modified eCommerce Shopsoftware automatisch regelmäßig per CronJob oder bei Bedarf auch manuell per Knopfdruck sichern. Dieses Modul ist ein sehr nützliche und wichtige Erweiterung für jede modified eCommerce Shopsoftware, da z.B. der bisher sehr beliebte MySQLDumper nicht mehr weiterentwickelt wird.
 Folgende Funktionen bietet das Modul MITS Cron Database Backups:
 
-    Automatisch regelmäßige Datenbanksicherungen des Shops erstellen lassen (Cronjobs notwendig)
-    Datenbanksicherungen werden direkt in den Ordner admin/backups passend für den Datenbank-Manager des Shopsystems abgelegt.
-    Datenbanksicherung optional per E-Mail erhalten
-    Datenbanksicherung optional per FTP auf einen anderen Backup-Server hochladen
-    Optional alte Datenbanksicherungen automatisch nach x Tagen löschen
-    Optional alte LOG-Files vom Typ mod_notice, mod_deprecated und mod_strict des Shops automatisch nach x Tagen löschen
+- Automatisch regelmäßige Datenbanksicherungen des Shops erstellen lassen (Cronjobs notwendig)
+- Datenbanksicherungen werden direkt in den Ordner admin/backups passend für den Datenbank-Manager des Shopsystems abgelegt.
+- Datenbanksicherung optional per E-Mail erhalten
+- Datenbanksicherung optional per FTP auf einen anderen Backup-Server hochladen
+- Optional alte Datenbanksicherungen automatisch nach x Tagen löschen
+- Optional alte LOG-Files vom Typ mod_notice, mod_deprecated und mod_strict des Shops automatisch nach x Tagen löschen
     
     
 ########################################################################################################
