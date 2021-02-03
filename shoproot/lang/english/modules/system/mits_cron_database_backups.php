@@ -24,13 +24,17 @@ if (defined(MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS) && MODULE_MITS_CRON_DATABA
   $mits_db_backup_cronjoburl = '';
   $mits_db_backup_button = '';
 }
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_TITLE', 'MITS CronDatabaseBackups v1.1 <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>');
+$mits_exec_enabled = function_exists('exec') && !in_array('exec', array_map('trim', explode(', ', ini_get('disable_functions')))) && strtolower(ini_get('safe_mode')) != 1;
+$mits_no_exec = (!$mits_exec_enabled) ? '<div style="padding:6px;background:#ff0;font-size:14px;border:1px solid #900;color:#900;"><strong>Ihr Server verf&uuml;gt nicht &uuml;ber die notwendigen Berechtigungen. Die Funktion <i>exec()</i> ist deaktiviert.</strong></div>' : '';
+
+define('MODULE_MITS_CRON_DATABASE_BACKUPS_TITLE', 'MITS CronDatabaseBackups v1.2 <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>');
 define('MODULE_MITS_CRON_DATABASE_BACKUPS_DESCRIPTION', '
    <div> 
     <a href="https://www.merz-it-service.de/" target="_blank">
-        <img src="'.DIR_WS_CATALOG.'callback/mits_cron_database_backups/merz-it-service.png" border="0" alt="" style="display:block;max-width:100%;height:auto;" />
+        <img src="' . DIR_WS_CATALOG . 'callback/mits_cron_database_backups/merz-it-service.png" border="0" alt="" style="display:block;max-width:100%;height:auto;" />
     </a><br />
     <h3>Datenbanksicherung per CronJob</h3>
+    ' . $mits_no_exec . ' 
     <div>    
       <p>Mit diesem Modul k&ouml;nnen Sie Ihre Shopdatenbank automatisch regelm&auml;&szlig;ig per CronJob oder bei Bedarf auch manuell sichern. </p>
       <ul>
