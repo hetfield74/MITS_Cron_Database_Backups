@@ -36,7 +36,7 @@ defined('MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP') or define('MODULE_MITS_CRON_DA
 defined('MODULE_MITS_CRON_DATABASE_BACKUPS_HASH') or define('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_DAYS', '180');
 defined('MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP') or define('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETELOGS', 'true');
 
-if (MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS == 'true') {
+if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS') && MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS == 'true') {
 
   if ($_GET) {
     $pw = $_GET['pw'];
@@ -46,7 +46,8 @@ if (MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS == 'true') {
     $pw = $argv[1];
   }
 
-  if (!empty($pw) && $pw !== MODULE_MITS_CRON_DATABASE_BACKUPS_HASH && MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS == true) {
+  if (!empty($pw) && defined('MODULE_MITS_CRON_DATABASE_BACKUPS_HASH') && $pw !== MODULE_MITS_CRON_DATABASE_BACKUPS_HASH
+    && defined('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS') && MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS == 'true') {
     echo 'Kein Zugriff erlaubt!';
     die;
   } else {
@@ -84,7 +85,7 @@ if (MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS == 'true') {
         <!doctype html>
         <html>
         <head>
-        <meta charset="' . $_SESSION['language_charset'] . '">
+        <meta charset="' . (isset($_SESSION['language_charset']) ? $_SESSION['language_charset'] : 'utf-8') . '">
         <title>Datenbanksicherung</title>
         </head>
         <body style="text-align:center;background:#ffe;font-family: Arial, Helvetica, sans-serif">
@@ -140,12 +141,10 @@ if (MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS == 'true') {
           if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_USER') && MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_USER != ''
             && defined('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PASS') && MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PASS != '') {
             $ftp_login_result = ftp_login($ftp_conn_id, MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_USER, MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PASS);
-
             if ((!$ftp_conn_id) || (!$ftp_login_result)) {
               echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>FTP-Verbindung ist fehlgeschlagen!</strong></p>';
             } else {
               echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Verbunden mit FTP-Server!</strong></p>';
-
               $ftp_path = MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PATH;
               if (substr($ftp_path, -1) == '/') {
                 $ftp_path = substr($ftp_path, 0, -1);
@@ -157,14 +156,12 @@ if (MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS == 'true') {
                 $source_file = DIR_FS_DOCUMENT_ROOT . $dir . $sql_file . '.gz';
               }
               $ftp_upload = ftp_put($ftp_conn_id, $destination_file, $source_file, FTP_BINARY);
-
               if (!$ftp_upload) {
                 echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>FTP-Upload ist fehlgeschlagen!</strong></p>';
               } else {
                 echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Datenbanksicherung erfolgreich auf den FTP-Server &uuml;bertragen!</strong></p>';
               }
             }
-
             ftp_close($ftp_conn_id);
           }
         }

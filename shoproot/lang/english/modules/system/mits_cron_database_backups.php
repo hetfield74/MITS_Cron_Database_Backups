@@ -27,8 +27,8 @@ if (defined(MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS) && MODULE_MITS_CRON_DATABA
 $mits_exec_enabled = function_exists('exec') && !in_array('exec', array_map('trim', explode(', ', ini_get('disable_functions')))) && strtolower(ini_get('safe_mode')) != 1;
 $mits_no_exec = (!$mits_exec_enabled) ? '<div style="padding:6px;background:#ff0;font-size:14px;border:1px solid #900;color:#900;"><strong>Ihr Server verf&uuml;gt nicht &uuml;ber die notwendigen Berechtigungen. Die Funktion <i>exec()</i> ist deaktiviert. Bitte kontaktieren Sie ihren Provider zur Aktivierung oder wechseln sie zu einem Provider mit aktivierter exec-Funktion, z.B. <a href="https://all-inkl.com/?partner=293050">all-inkl.com</a></strong></div>' : '';
 
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_TITLE', 'MITS CronDatabaseBackups v1.2 <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_DESCRIPTION', '
+define('MODULE_MITS_CRON_DATABASE_BACKUPS_TEXT_TITLE', 'MITS CronDatabaseBackups v1.2 <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>');
+define('MODULE_MITS_CRON_DATABASE_BACKUPS_TEXT_DESCRIPTION', '
    <div> 
     <a href="https://www.merz-it-service.de/" target="_blank">
         <img src="' . DIR_WS_CATALOG . 'callback/mits_cron_database_backups/merz-it-service.png" border="0" alt="" style="display:block;max-width:100%;height:auto;" />

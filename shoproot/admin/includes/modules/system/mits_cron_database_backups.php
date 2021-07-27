@@ -24,10 +24,10 @@ class mits_cron_database_backups {
 
   function __construct() {
     $this->code = 'mits_cron_database_backups';
-    $this->title = MODULE_MITS_CRON_DATABASE_BACKUPS_TITLE;
-    $this->description = MODULE_MITS_CRON_DATABASE_BACKUPS_DESCRIPTION;
-    $this->sort_order = MODULE_MITS_CRON_DATABASE_BACKUPS_SORT_ORDER;
-    $this->enabled = ((MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS == 'true') ? true : false);
+    $this->title = constant('MODULE_' . strtoupper($this->code) . '_TEXT_TITLE');
+    $this->description = constant('MODULE_' . strtoupper($this->code) . '_TEXT_DESCRIPTION');
+    $this->sort_order = defined('MODULE_' . strtoupper($this->code) . '_SORT_ORDER') ? constant('MODULE_' . strtoupper($this->code) . '_SORT_ORDER') : 0;
+    $this->enabled = ((constant('MODULE_' . strtoupper($this->code) . '_STATUS') == 'true') ? true : false);
   }
 
   function process($file) {
