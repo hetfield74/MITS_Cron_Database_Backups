@@ -34,7 +34,7 @@ class mits_cron_database_backups {
 
   function process($file) {
     if (defined(constant($this->name . '_VERSION'))) {
-      xtc_db_query("UPDATE ".TABLE_CONFIGURATION." SET configuration_value = '" . $this->version . "' WHERE configuration_key = '" . $this->name . "_VERSION'");
+      xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET configuration_value = '" . $this->version . "' WHERE configuration_key = '" . $this->name . "_VERSION'");
     } else {
       xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_key, configuration_value, configuration_group_id, sort_order, set_function, date_added) VALUES ('" . $this->name . "_VERSION', '" . $this->version . "', 6, 17, NULL, now())");
     }
