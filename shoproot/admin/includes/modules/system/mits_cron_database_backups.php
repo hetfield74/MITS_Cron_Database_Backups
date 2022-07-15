@@ -25,19 +25,22 @@ class mits_cron_database_backups {
   function __construct() {
     $this->code = 'mits_cron_database_backups';
     $this->name = 'MODULE_' . strtoupper($this->code);
-    $this->version = '1.3';
+    $this->version = '1.3.1';
     $this->title = constant($this->name . '_TEXT_TITLE') . ' - v' . $this->version;
     $this->description = constant($this->name . '_TEXT_DESCRIPTION');
     $this->sort_order = defined($this->name . '_SORT_ORDER') ? constant($this->name . '_SORT_ORDER') : 0;
     $this->enabled = (defined($this->name . '_STATUS') && constant($this->name . '_STATUS') == 'true') ? true : false;
+
+    $version_query = xtc_db_query("SELECT configuration_value FROM " . TABLE_CONFIGURATION . " WHERE configuration_key = '" . $this->name . "_VERSION'");
+    if (xtc_db_num_rows($version_query)) {
+      xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET configuration_value = '" . $this->version . "' WHERE configuration_key = '" . $this->name . "_VERSION'");
+    } elseif (defined($this->name . '_STATUS')) {
+      xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_key, configuration_value, configuration_group_id, sort_order, set_function, date_added) VALUES ('" . $this->name . "_VERSION', '" . $this->version . "', 6, 99, NULL, now())");
+    }
   }
 
   function process($file) {
-    if (defined(constant($this->name . '_VERSION'))) {
-      xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET configuration_value = '" . $this->version . "' WHERE configuration_key = '" . $this->name . "_VERSION'");
-    } else {
-      xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_key, configuration_value, configuration_group_id, sort_order, set_function, date_added) VALUES ('" . $this->name . "_VERSION', '" . $this->version . "', 6, 17, NULL, now())");
-    }
+
   }
 
   function display() {
