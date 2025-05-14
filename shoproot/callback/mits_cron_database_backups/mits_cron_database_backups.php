@@ -40,50 +40,51 @@ defined('MODULE_MITS_CRON_DATABASE_BACKUPS_HASH') or define('MODULE_MITS_CRON_DA
 defined('MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP') or define('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETELOGS', 'true');
 
 if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS') && MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS == 'true') {
-
-  if (isset($_GET) && $_GET && isset($_GET['pw'])) {
-    $pw = $_GET['pw'];
-  } elseif (isset($_REQUEST) && $_REQUEST && isset($_REQUEST['pw'])) {
-    $pw = $_REQUEST['pw'];
-  } elseif (isset($argv) && is_array($argv)) {
-    $pw = $argv[1];
-  }
-
-  if (!empty($pw) && defined('MODULE_MITS_CRON_DATABASE_BACKUPS_HASH') && $pw !== MODULE_MITS_CRON_DATABASE_BACKUPS_HASH) {
-    echo 'Kein Zugriff erlaubt!';
-    die;
-  } else {
-    @ini_set('display_errors', 1);
-    @set_time_limit(0);
-
-    $exec_enabled = function_exists('exec') && !in_array('exec', array_map('trim', explode(', ', ini_get('disable_functions')))) && strtolower(ini_get('safe_mode')) != 1;
-    if ($exec_enabled) {
-      $no_exec = '';
-      if (is_dir('export/mits_cron_database_backups')) {
-        $dir = 'export/mits_cron_database_backups/';
-      } else {
-        $dir = (defined('DIR_ADMIN') ? DIR_ADMIN : 'admin/') . 'backups/';
-      }
-      $sql_file = DB_DATABASE . "_" . date("Y-m-d_H-i-s") . ".sql";
-      if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_COMPLETE_INSERT') && MODULE_MITS_CRON_DATABASE_BACKUPS_COMPLETE_INSERT == 'false') {
-        $complete_insert = " --complete-insert=FALSE";
-      } else {
-        $complete_insert = "";
-      }
-      if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_EXTENDED_INSERT') && MODULE_MITS_CRON_DATABASE_BACKUPS_EXTENDED_INSERT == 'false') {
-        $extended_insert = " --extended-insert=FALSE";
-      } else {
-        $extended_insert = "";
-      }
-      exec("mysqldump --opt" . $complete_insert . $extended_insert . " -h" . DB_SERVER . " -u" . DB_SERVER_USERNAME . " -p" . DB_SERVER_PASSWORD . " " . DB_DATABASE . " > " . DIR_FS_DOCUMENT_ROOT . $dir . $sql_file);
-      if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP') && MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP == 'true') {
-        exec("gzip  " . DIR_FS_DOCUMENT_ROOT . $dir . $sql_file);
-      }
-    } else {
-      $no_exec = '<p style="padding:6px;color:#444;font-size:14px;"><strong>Ihr Server verf&uuml;gt nicht &uuml;ber die notwendigen Bereichtigungen. Die Funktion <i>exec()</i>ist deaktiviert.</strong></p>';
+    if (isset($_GET) && $_GET && isset($_GET['pw'])) {
+        $pw = $_GET['pw'];
+    } elseif (isset($_REQUEST) && $_REQUEST && isset($_REQUEST['pw'])) {
+        $pw = $_REQUEST['pw'];
+    } elseif (isset($argv) && is_array($argv)) {
+        $pw = $argv[1];
     }
 
-    echo '
+    if (!empty($pw) && defined('MODULE_MITS_CRON_DATABASE_BACKUPS_HASH') && $pw !== MODULE_MITS_CRON_DATABASE_BACKUPS_HASH) {
+        echo 'Kein Zugriff erlaubt!';
+        die;
+    } else {
+        @ini_set('display_errors', 1);
+        @set_time_limit(0);
+
+        $exec_enabled = function_exists('exec') && !in_array('exec', array_map('trim', explode(', ', ini_get('disable_functions')))) && strtolower(ini_get('safe_mode')) != 1;
+        if ($exec_enabled) {
+            $no_exec = '';
+            if (is_dir('export/mits_cron_database_backups')) {
+                $dir = 'export/mits_cron_database_backups/';
+            } else {
+                $dir = (defined('DIR_ADMIN') ? DIR_ADMIN : 'admin/') . 'backups/';
+            }
+            $sql_file = DB_DATABASE . "_" . date("Y-m-d_H-i-s") . ".sql";
+            if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_COMPLETE_INSERT') && MODULE_MITS_CRON_DATABASE_BACKUPS_COMPLETE_INSERT == 'false') {
+                $complete_insert = " --complete-insert=FALSE";
+            } else {
+                $complete_insert = "";
+            }
+            if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_EXTENDED_INSERT') && MODULE_MITS_CRON_DATABASE_BACKUPS_EXTENDED_INSERT == 'false') {
+                $extended_insert = " --extended-insert=FALSE";
+            } else {
+                $extended_insert = "";
+            }
+            exec(
+              "mysqldump --opt" . $complete_insert . $extended_insert . " -h" . DB_SERVER . " -u" . DB_SERVER_USERNAME . " -p" . DB_SERVER_PASSWORD . " " . DB_DATABASE . " > " . DIR_FS_DOCUMENT_ROOT . $dir . $sql_file
+            );
+            if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP') && MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP == 'true') {
+                exec("gzip  " . DIR_FS_DOCUMENT_ROOT . $dir . $sql_file);
+            }
+        } else {
+            $no_exec = '<p style="padding:6px;color:#444;font-size:14px;"><strong>Ihr Server verf&uuml;gt nicht &uuml;ber die notwendigen Bereichtigungen. Die Funktion <i>exec()</i>ist deaktiviert.</strong></p>';
+        }
+
+        echo '
         <!doctype html>
         <html>
         <head>
@@ -100,130 +101,133 @@ if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS') && MODULE_MITS_CRON_DATA
         ' . $no_exec . '      
       ';
 
-    if (is_file(DIR_FS_DOCUMENT_ROOT . $dir . $sql_file) or is_file(DIR_FS_DOCUMENT_ROOT . $dir . $sql_file . '.gz')) {
-      echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Datenbank wurde erfolgreich gesichert!</strong></p>';
+        if (is_file(DIR_FS_DOCUMENT_ROOT . $dir . $sql_file) or is_file(DIR_FS_DOCUMENT_ROOT . $dir . $sql_file . '.gz')) {
+            echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Datenbank wurde erfolgreich gesichert!</strong></p>';
 
-      if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_SENDMAIL') && MODULE_MITS_CRON_DATABASE_BACKUPS_SENDMAIL == 'true') {
-        if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_MAILADDRESS') && MODULE_MITS_CRON_DATABASE_BACKUPS_MAILADDRESS != '') {
-          require_once(DIR_FS_INC . 'xtc_validate_email.inc.php');
-          if (xtc_validate_email(MODULE_MITS_CRON_DATABASE_BACKUPS_MAILADDRESS)) {
-            $mail_file = DIR_FS_DOCUMENT_ROOT . $dir . $sql_file;
-            if (defined(MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP) && MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP == 'true') {
-              $mail_file = DIR_FS_DOCUMENT_ROOT . $dir . $sql_file . '.gz';
+            if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_SENDMAIL') && MODULE_MITS_CRON_DATABASE_BACKUPS_SENDMAIL == 'true') {
+                if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_MAILADDRESS') && MODULE_MITS_CRON_DATABASE_BACKUPS_MAILADDRESS != '') {
+                    require_once(DIR_FS_INC . 'xtc_validate_email.inc.php');
+                    if (xtc_validate_email(MODULE_MITS_CRON_DATABASE_BACKUPS_MAILADDRESS)) {
+                        $mail_file = DIR_FS_DOCUMENT_ROOT . $dir . $sql_file;
+                        if (defined(MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP) && MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP == 'true') {
+                            $mail_file = DIR_FS_DOCUMENT_ROOT . $dir . $sql_file . '.gz';
+                        }
+                        $mail_content_html = 'Im Anhang befindet sich die Datenbanksicherung des Shops ' . STORE_NAME . ' vom ' . date("d.m.Y H:i:s") . ' Uhr';
+                        $mail_content_txt = 'Im Anhang befindet sich die Datenbanksicherung des Shops ' . STORE_NAME . ' vom ' . date("d.m.Y H:i:s") . ' Uhr';
+                        xtc_php_mail(
+                          EMAIL_SUPPORT_ADDRESS,
+                          EMAIL_SUPPORT_NAME,
+                          MODULE_MITS_CRON_DATABASE_BACKUPS_MAILADDRESS,
+                          'MITS CronDatabaseBackups by Hetfield',
+                          '',
+                          EMAIL_SUPPORT_REPLY_ADDRESS,
+                          EMAIL_SUPPORT_REPLY_ADDRESS_NAME,
+                          $mail_file,
+                          '',
+                          'Datenbanksicherung vom ' . date("d.m.Y H:i:s") . ' Uhr',
+                          $mail_content_html,
+                          $mail_content_txt
+                        );
+                        echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>E-Mail mit der Datenbanksicherung wurde gesendet!</strong></p>';
+                    }
+                }
             }
-            $mail_content_html = 'Im Anhang befindet sich die Datenbanksicherung des Shops ' . STORE_NAME . ' vom ' . date("d.m.Y H:i:s") . ' Uhr';
-            $mail_content_txt = 'Im Anhang befindet sich die Datenbanksicherung des Shops ' . STORE_NAME . ' vom ' . date("d.m.Y H:i:s") . ' Uhr';
-            xtc_php_mail(EMAIL_SUPPORT_ADDRESS,
-              EMAIL_SUPPORT_NAME,
-              MODULE_MITS_CRON_DATABASE_BACKUPS_MAILADDRESS,
-              'MITS CronDatabaseBackups by Hetfield',
-              '',
-              EMAIL_SUPPORT_REPLY_ADDRESS,
-              EMAIL_SUPPORT_REPLY_ADDRESS_NAME,
-              $mail_file,
-              '',
-              'Datenbanksicherung vom ' . date("d.m.Y H:i:s") . ' Uhr',
-              $mail_content_html,
-              $mail_content_txt
-            );
-            echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>E-Mail mit der Datenbanksicherung wurde gesendet!</strong></p>';
-          }
-        }
-      }
 
-      if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_SENDFTP') && MODULE_MITS_CRON_DATABASE_BACKUPS_SENDFTP == 'true') {
-        if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_HOST') && MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_HOST != '') {
+            if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_SENDFTP') && MODULE_MITS_CRON_DATABASE_BACKUPS_SENDFTP == 'true') {
+                if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_HOST') && MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_HOST != '') {
+                    if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PORT') && MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PORT != '' && is_numeric(MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PORT)) {
+                        $ftp_conn_id = ftp_connect(MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_HOST, MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PORT);
+                    } else {
+                        $ftp_conn_id = ftp_connect(MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_HOST);
+                    }
 
-          if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PORT') && MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PORT != '' && is_numeric(MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PORT)) {
-            $ftp_conn_id = ftp_connect(MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_HOST, MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PORT);
-          } else {
-            $ftp_conn_id = ftp_connect(MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_HOST);
-          }
-
-          if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_USER') && MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_USER != ''
-            && defined('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PASS') && MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PASS != '') {
-            $ftp_login_result = ftp_login($ftp_conn_id, MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_USER, MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PASS);
-            if ((!$ftp_conn_id) || (!$ftp_login_result)) {
-              echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>FTP-Verbindung ist fehlgeschlagen!</strong></p>';
-            } else {
-              echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Verbunden mit FTP-Server!</strong></p>';
-              $ftp_path = MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PATH;
-              if (substr($ftp_path, -1) == '/') {
-                $ftp_path = substr($ftp_path, 0, -1);
-              }
-              $destination_file = $ftp_path . '/' . $sql_file;
-              $source_file = DIR_FS_DOCUMENT_ROOT . $dir . $sql_file;
-              if (defined(MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP) && MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP == 'true') {
-                $destination_file = $ftp_path . '/' . $sql_file . '.gz';
-                $source_file = DIR_FS_DOCUMENT_ROOT . $dir . $sql_file . '.gz';
-              }
-              $ftp_upload = ftp_put($ftp_conn_id, $destination_file, $source_file, FTP_BINARY);
-              if (!$ftp_upload) {
-                echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>FTP-Upload ist fehlgeschlagen!</strong></p>';
-              } else {
-                echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Datenbanksicherung erfolgreich auf den FTP-Server &uuml;bertragen!</strong></p>';
-              }
+                    if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_USER') && MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_USER != ''
+                      && defined('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PASS') && MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PASS != '') {
+                        $ftp_login_result = ftp_login($ftp_conn_id, MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_USER, MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PASS);
+                        if ((!$ftp_conn_id) || (!$ftp_login_result)) {
+                            echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>FTP-Verbindung ist fehlgeschlagen!</strong></p>';
+                        } else {
+                            echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Verbunden mit FTP-Server!</strong></p>';
+                            $ftp_path = MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PATH;
+                            if (substr($ftp_path, -1) == '/') {
+                                $ftp_path = substr($ftp_path, 0, -1);
+                            }
+                            $destination_file = $ftp_path . '/' . $sql_file;
+                            $source_file = DIR_FS_DOCUMENT_ROOT . $dir . $sql_file;
+                            if (defined(MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP) && MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP == 'true') {
+                                $destination_file = $ftp_path . '/' . $sql_file . '.gz';
+                                $source_file = DIR_FS_DOCUMENT_ROOT . $dir . $sql_file . '.gz';
+                            }
+                            $ftp_upload = ftp_put($ftp_conn_id, $destination_file, $source_file, FTP_BINARY);
+                            if (!$ftp_upload) {
+                                echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>FTP-Upload ist fehlgeschlagen!</strong></p>';
+                            } else {
+                                echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Datenbanksicherung erfolgreich auf den FTP-Server &uuml;bertragen!</strong></p>';
+                            }
+                        }
+                        ftp_close($ftp_conn_id);
+                    }
+                }
             }
-            ftp_close($ftp_conn_id);
-          }
-        }
-      }
 
-      if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS') && MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS == 'true' && is_numeric(MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_DAYS)) {
-        $timestamp = time();
-        $handle = opendir($dir);
-        $daysinsecond = MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_DAYS * 24 * 60 * 60;
-        while ($datei = readdir($handle)) {
-          if ($datei == '.' || $datei == '..') {
-          } else {
-            $datum = filemtime($dir . '/' . $datei);
-            if ($timestamp - $datum > $daysinsecond) {
-              if (preg_match('/\.sql$/i', $datei)) {
-                @unlink($dir . '/' . $datei);
-              } elseif (preg_match('/\.sql.gz$/i', $datei)) {
-                @unlink($dir . '/' . $datei);
-              }
+            if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS') && MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS == 'true' && is_numeric(
+                MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_DAYS
+              )) {
+                $timestamp = time();
+                $handle = opendir($dir);
+                $daysinsecond = MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_DAYS * 24 * 60 * 60;
+                while ($datei = readdir($handle)) {
+                    if ($datei == '.' || $datei == '..') {
+                    } else {
+                        $datum = filemtime($dir . '/' . $datei);
+                        if ($timestamp - $datum > $daysinsecond) {
+                            if (preg_match('/\.sql$/i', $datei)) {
+                                @unlink($dir . '/' . $datei);
+                            } elseif (preg_match('/\.sql.gz$/i', $datei)) {
+                                @unlink($dir . '/' . $datei);
+                            }
+                        }
+                    }
+                }
+                closedir($handle);
+                echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Alte Datenbanksicherungen erfolgreich gel&ouml;scht!</strong></p>';
+
+                if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETELOGS') && MODULE_MITS_CRON_DATABASE_BACKUPS_DELETELOGS == 'true') {
+                    $log_dir = 'log/';
+                    $handle_log = opendir($log_dir);
+                    while ($datei = readdir($handle_log)) {
+                        if ($datei == '.' || $datei == '..' || $datei == 'index.html') {
+                        } else {
+                            $datum = filemtime($log_dir . '/' . $datei);
+                            if ($timestamp - $datum > $daysinsecond) {
+                                @unlink($log_dir . '/' . $datei);
+                            } elseif (substr($datei, 0, 10) == 'mod_notice') {
+                                @unlink($log_dir . '/' . $datei);
+                            } elseif (substr($datei, 0, 14) == 'mod_deprecated') {
+                                @unlink($log_dir . '/' . $datei);
+                            } elseif (substr($datei, 0, 10) == 'mod_strict') {
+                                @unlink($log_dir . '/' . $datei);
+                            }
+                        }
+                    }
+                    closedir($handle_log);
+                    echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Alte Log-Files erfolgreich gel&ouml;scht!</strong></p>';
+                }
             }
-          }
+        } else {
+            echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Datenbanksicherung wurde nicht erstellt! Bitte &uuml;berpr&uuml;fen sie die Serverberechtigungen!</strong></p>';
         }
-        closedir($handle);
-        echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Alte Datenbanksicherungen erfolgreich gel&ouml;scht!</strong></p>';
 
-        if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETELOGS') && MODULE_MITS_CRON_DATABASE_BACKUPS_DELETELOGS == 'true') {
-          $log_dir = 'log/';
-          $handle_log = opendir($log_dir);
-          while ($datei = readdir($handle_log)) {
-            if ($datei == '.' || $datei == '..' || $datei == 'index.html') {
-            } else {
-              $datum = filemtime($log_dir . '/' . $datei);
-              if ($timestamp - $datum > $daysinsecond) {
-                @unlink($log_dir . '/' . $datei);
-              } elseif (substr($datei, 0, 10) == 'mod_notice') {
-                @unlink($log_dir . '/' . $datei);
-              } elseif (substr($datei, 0, 14) == 'mod_deprecated') {
-                @unlink($log_dir . '/' . $datei);
-              } elseif (substr($datei, 0, 10) == 'mod_strict') {
-                @unlink($log_dir . '/' . $datei);
-              }
-            }
-          }
-          closedir($handle_log);
-          echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Alte Log-Files erfolgreich gel&ouml;scht!</strong></p>';
-        }
-      }
-
-    } else {
-      echo '<p style="padding:6px;color:#444;font-size:14px;"><strong>Datenbanksicherung wurde nicht erstellt! Bitte &uuml;berpr&uuml;fen sie die Serverberechtigungen!</strong></p>';
-    }
-
-    echo '
-      <a style="display:block;padding:6px;margin:0 auto;color:#fff;background:#444;width:60%;-webkit-border-radius:4px;-moz-border-radius:4px;border-radius:4px;text-decoration:none;" href="'.xtc_href_link_admin((defined('DIR_ADMIN') ? DIR_ADMIN : 'admin/').'module_export.php', 'set=system&module=mits_cron_database_backups', 'NONSSL').'"><strong>Zur&uuml;ck zum Modul &raquo;</strong></a>
+        echo '
+      <a style="display:block;padding:6px;margin:0 auto;color:#fff;background:#444;width:60%;-webkit-border-radius:4px;-moz-border-radius:4px;border-radius:4px;text-decoration:none;" href="' . xtc_href_link_admin(
+            (defined('DIR_ADMIN') ? DIR_ADMIN : 'admin/') . 'module_export.php',
+            'set=system&module=mits_cron_database_backups',
+            'NONSSL'
+          ) . '"><strong>Zur&uuml;ck zum Modul &raquo;</strong></a>
       <p style="text-align:center;padding:6px;color:#555;font-size:11px;margin-top:50px;"> &copy; by <a href="https://www.merz-it-service.de/"><span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (MerZ IT-SerVice)</span></a></p>
       </body>
       </html>
     ';
-
-  }
-
+    }
 }
 ?>
