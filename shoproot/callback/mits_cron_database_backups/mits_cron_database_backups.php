@@ -170,9 +170,10 @@ if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS') && MODULE_MITS_CRON_DATA
                 }
             }
 
-            if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS') && MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS == 'true' && is_numeric(
-                MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_DAYS
-              )) {
+            if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS') 
+              && MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS == 'true' 
+              && is_numeric(MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_DAYS)
+            ) {
                 $timestamp = time();
                 $handle = opendir($dir);
                 $daysinsecond = MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_DAYS * 24 * 60 * 60;
@@ -197,7 +198,7 @@ if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS') && MODULE_MITS_CRON_DATA
                     $handle_log = opendir($log_dir);
                     while ($datei = readdir($handle_log)) {
                         if ($datei == '.' || $datei == '..' || $datei == 'index.html') {
-                        } else {
+                        } elseif (!is_dir(DIR_FS_LOG . $datei) && $datei != 'xss_blacklist.log') {
                             $datum = filemtime($log_dir . '/' . $datei);
                             if ($timestamp - $datum > $daysinsecond) {
                                 @unlink($log_dir . '/' . $datei);

@@ -35,7 +35,7 @@ class mits_cron_database_backups
     {
         $this->code = 'mits_cron_database_backups';
         $this->name = 'MODULE_' . strtoupper($this->code);
-        $this->version = '1.3.4';
+        $this->version = '1.3.5';
         $this->title = constant($this->name . '_TEXT_TITLE') . ' - v' . $this->version;
         $this->description = constant($this->name . '_TEXT_DESCRIPTION');
         $this->sort_order = defined($this->name . '_SORT_ORDER') ? constant($this->name . '_SORT_ORDER') : 0;
