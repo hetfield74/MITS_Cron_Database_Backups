@@ -15,75 +15,119 @@
  * --------------------------------------------------------------
  */
 
-defined('MODULE_MITS_CRON_DATABASE_BACKUPS_HASH') or define('MODULE_MITS_CRON_DATABASE_BACKUPS_HASH', '3p7R9VAZcbtUCptYH212u4n7jtVBg4Wy');
+$modulname = strtoupper('mits_cron_database_backups');
+$module_key = 'MODULE_' . $modulname;
+$mits_default_hash = '3p7R9VAZcbtUCptYH212u4n7jtVBg4Wy';
+$mits_hash = defined($module_key . '_HASH') ? constant($module_key . '_HASH') : $mits_default_hash;
 
-if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS') && MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS == 'true') {
-  $mits_db_backup_cronjoburl = '<hr /><h3>CronJob-URL:</h3><textarea style="width: 100%;height:auto;">' . xtc_catalog_href_link('callback/mits_cron_database_backups/mits_cron_database_backups.php', 'pw=' . MODULE_MITS_CRON_DATABASE_BACKUPS_HASH, 'SSL') . '</textarea><p>Tragen Sie in Ihren CronJobs diese URL ein!</p><p>Der Parameter <strong style="color:#900">pw</strong> ist durch den gesetzten HASH-Wert zu ersetzen. Sollten Sie also den HASH-Wert &auml;ndern, dann m&uuml;ssen Sie die dadurch ge&auml;nderte URL auch bei Ihrem angelegten CronJob anpassen.</p>';
-  $mits_db_backup_button = '<hr /><div style="text-align:center;padding:10px;"><a href="'.xtc_catalog_href_link('callback/mits_cron_database_backups/mits_cron_database_backups.php', '', 'SSL').'?pw='.MODULE_MITS_CRON_DATABASE_BACKUPS_HASH.'" class="button" onclick="this.blur();"><strong>Datenbank-Backup starten</strong></a></div><hr />';
+if (defined($module_key . '_STATUS') && constant($module_key . '_STATUS') == 'true') {
+  $mits_db_backup_cronjoburl = '<hr /><h3>CronJob URL:</h3><textarea style="width: 100%;height:auto;">' . xtc_catalog_href_link('callback/mits_cron_database_backups/mits_cron_database_backups.php', 'pw=' . $mits_hash, 'SSL') . '</textarea><p>Use this URL in your cron jobs.</p><p>The parameter <strong style="color:#900">pw</strong> must be replaced by the configured hash value. If you change the hash value, you also have to update the URL in your cron job.</p>';
+  $mits_db_backup_button = '<hr /><div style="text-align:center;padding:10px;"><a href="'.xtc_catalog_href_link('callback/mits_cron_database_backups/mits_cron_database_backups.php', '', 'SSL').'?pw='.$mits_hash.'" class="button" onclick="this.blur();"><strong>Start database backup</strong></a></div>';
+  $mits_db_restore_button = '<div style="text-align:center;padding:10px;"><a href="'.xtc_href_link('mits_cron_database_restore.php', '', 'NONSSL').'" class="button" onclick="this.blur();"><strong>Open database restore</strong></a></div><hr />';
 } else {
   $mits_db_backup_cronjoburl = '';
   $mits_db_backup_button = '';
+  $mits_db_restore_button = '';
 }
-$mits_exec_enabled = function_exists('exec') && !in_array('exec', array_map('trim', explode(', ', ini_get('disable_functions')))) && strtolower(ini_get('safe_mode')) != 1;
-$mits_no_exec = (!$mits_exec_enabled) ? '<div style="padding:6px;background:#ff0;font-size:14px;border:1px solid #900;color:#900;"><strong>Ihr Server verf&uuml;gt nicht &uuml;ber die notwendigen Berechtigungen. Die Funktion <i>exec()</i> ist deaktiviert. Bitte kontaktieren Sie ihren Provider zur Aktivierung oder wechseln sie zu einem Provider mit aktivierter exec-Funktion, z.B. <a href="https://all-inkl.com/?partner=293050">all-inkl.com</a></strong></div>' : '';
 
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_TEXT_TITLE', 'MITS CronDatabaseBackups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_TEXT_DESCRIPTION', '
-   <div> 
+$mits_disabled_functions = array_map('trim', explode(',', (string)ini_get('disable_functions')));
+$mits_exec_enabled = function_exists('exec') && !in_array('exec', $mits_disabled_functions) && strtolower((string)ini_get('safe_mode')) != 1;
+$mits_curl_enabled = function_exists('curl_init');
+$mits_no_curl = (!$mits_curl_enabled) ? '<div style="padding:6px;background:#ff0;font-size:14px;border:1px solid #900;color:#900;"><strong>The PHP cURL extension is not active. The modified Scheduled Task for this module requires cURL so the backup call can run isolated through the callback URL.</strong></div>' : '';
+$mits_no_exec = (!$mits_exec_enabled) ? '<div style="padding:6px;background:#ff0;font-size:14px;border:1px solid #900;color:#900;"><strong>Your server does not provide the required permissions. The function <i>exec()</i> is disabled. Please contact your hosting provider to enable it or switch to a provider with exec enabled, e.g. <a href="https://all-inkl.com/?partner=293050">all-inkl.com</a>.</strong></div>' : '';
+
+$lang_array = array(
+  'MODULE_' . $modulname . '_TITLE'       => 'MITS Cron Database Backups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>',
+  'MODULE_' . $modulname . '_DESCRIPTION' => '
+   <div>
     <a href="https://www.merz-it-service.de/" target="_blank">
-        <img src="' . DIR_WS_CATALOG . 'callback/mits_cron_database_backups/merz-it-service.png" border="0" alt="" style="display:block;max-width:100%;height:auto;" />
+        <img src="' . DIR_WS_CATALOG . 'callback/mits_cron_database_backups/merz-it-service.png" border="0" alt="MerZ IT-SerVice" style="display:block;max-width:100%;height:auto;" />
     </a><br />
-    <h3>Datenbanksicherung per CronJob</h3>
-    ' . $mits_no_exec . ' 
-    <div>    
-      <p>Mit diesem Modul k&ouml;nnen Sie Ihre Shopdatenbank automatisch regelm&auml;&szlig;ig per CronJob oder bei Bedarf auch manuell sichern. </p>
+    <h3>Database backups by cron job</h3>
+    ' . $mits_no_exec . '
+    ' . $mits_no_curl . '
+    <div>
+      <p>This module lets you automatically back up your shop database on a regular schedule or start a backup manually when needed.</p>
       <ul>
-        <li>Automatisch regelm&auml;&szlig;ige Datenbanksicherungen des Shops erstellen lassen</li>
-        <li>Datenbanksicherung optional per E-Mail erhalten</li>
-        <li>Datenbanksicherung optional per FTP auf einen anderen Backup-Server hochladen</li>
-        <li>Optional alte Datenbanksicherungen automatisch nach x Tagen l&ouml;schen</li>
-        <li>Optional alte LOG-Files vom Typ mod_notice, mod_deprecated und mod_strict des Shops automatisch nach x Tagen l&ouml;schen</li>
+        <li>Create regular automatic database backups of the shop</li>
+        <li>Fast restore of existing SQL/SQL.GZ backups in the admin area using the mysql client</li>
+        <li>Optional modified Scheduled Task: calls the existing callback URL by cURL</li>
+        <li>Optionally send database backups by email</li>
+        <li>Optionally upload database backups by FTP to another backup server</li>
+        <li>Optionally delete old database backups automatically after x days</li>
+        <li>Optionally delete old shop log files of type mod_notice, mod_deprecated and mod_strict after x days</li>
       </ul>
       <div style="text-align:center;">
-        <small>Nur auf Github gibt es immer die aktuellste Version des Moduls!</small><br />
-        <a style="background:#6a9;color:#444" target="_blank" href="https://github.com/hetfield74/MITS_Cron_Database_Backups" class="button" onclick="this.blur();">MITS_Cron_Database_Backups on Github</a>
+        <small>The latest module version is always available on GitHub.</small><br />
+        <a style="background:#6a9;color:#444" target="_blank" href="https://github.com/hetfield74/MITS_Cron_Database_Backups" class="button" onclick="this.blur();">MITS_Cron_Database_Backups on GitHub</a>
       </div>
-      <p>Bei Fragen, Problemen oder W&uuml;nschen zu diesem Modul oder auch zu anderen Anliegen rund um die modified eCommerce Shopsoftware nehmen Sie einfach Kontakt zu uns auf:</p> 
-      <div style="text-align:center;"><a style="background:#6a9;color:#444" target="_blank" href="https://www.merz-it-service.de/Kontakt.html" class="button" onclick="this.blur();">Kontaktseite auf MerZ-IT-SerVice.de</strong></a></div>
+      <p>For questions, problems or feature requests about this module, or for any other topics related to the modified eCommerce shopsoftware, please contact us:</p>
+      <div style="text-align:center;"><a style="background:#6a9;color:#444" target="_blank" href="https://www.merz-it-service.de/Kontakt.html" class="button" onclick="this.blur();">Contact MerZ-IT-SerVice.de</a></div>
     </div>
-    ' . $mits_db_backup_cronjoburl . '        
+    ' . $mits_db_backup_cronjoburl . '
     ' . $mits_db_backup_button . '
+    ' . $mits_db_restore_button . '
   </div>
-');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS_TITLE', 'Modul aktivieren?');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS_DESC', 'Das Modul MITS CronDatabaseBackups aktivieren?');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_HASH_TITLE','HASH-Wert');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_HASH_DESC','Der Parameter <strong>pw</strong> ist durch den bei HASH eingetragenen Wert zu ersetzen, wie in dem URL-Beispiel zu sehen: pw=<strong style="color:#900">3p7R9VAZcbtUCptYH212u4n7jtVBg4Wy</strong>. Aus Sicherheitsgr&uuml;nden sollte der Wert h&auml;ufiger ge&auml;ndert werden. Der ge&auml;nderte HASH-Wert ist dann auch in der URL des Scriptaufrufs zu verwenden.');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP_TITLE', 'GZIP-Komprimierung?');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP_DESC', 'Soll die GZIP-Komprimierung f&uuml;r die Datenbanksicherung verwendet werden?');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_COMPLETE_INSERT_TITLE', 'Option --complete-insert');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_COMPLETE_INSERT_DESC', 'Complete inserts f&uuml;gen dem SQL-Dumps die Spaltennamen hinzu. Dieser Parameter verbessert die Lesbarkeit und Zuverl&auml;ssigkeit des Dumps. Das Hinzuf&uuml;gen der Spaltennamen erh&ouml;ht die Gr&ouml;sse des SQL-Dumps, aber wenn es mit Extended Insert kombiniert wird, ist es vernachl&auml;ssigbar.');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_EXTENDED_INSERT_TITLE', 'Option --extended-insert');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_EXTENDED_INSERT_DESC', 'Extended Insert kombiniert mehrere Datenzeilen in einer einzigen INSERT-Abfrage. Dies verringert signifikant die Dateigr&ouml;sse f&uuml;r grosse SQL-Dumps, erh&ouml;ht die INSERT-Geschwindigkeit beim Import und wird allgemein empfohlen.');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_SENDMAIL_TITLE', 'Datenbanksicherung per E-Mail?');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_SENDMAIL_DESC', 'Soll die Datenbanksicherung per E-Mail versendet werden?');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_MAILADDRESS_TITLE', 'E-Mail-Adresse f&uuml;r Backup');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_MAILADDRESS_DESC', 'Tragen Sie hier die E-Mail-Adresse ein, an die die Datenbanksicherung gesendet werden soll. Beachten Sie bitte eventuelle Beschr&auml;nkungen bei gro&szlig;en Dateianh&auml;ngen.');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_SENDFTP_TITLE', 'Datenbanksicherung per FTP senden?');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_SENDFTP_DESC', 'Soll die Datenbanksicherung per FTP auf einen anderen Server hochgeladen werden?');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_HOST_TITLE', 'FTP-Server');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_HOST_DESC', 'Servername des FTP-Servers.');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_USER_TITLE', 'FTP-Benutzername');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_USER_DESC', 'Tragen Sie hier den FTP-Benutzernamen ein.');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PASS_TITLE', 'FTP-Passwort');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PASS_DESC', 'Tragen Sie hier das FTP-Passwort ein.');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PORT_TITLE', 'FTP-Port');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PORT_DESC', 'Tragen Sie hier den FTP-Port (z.B. 21) ein.');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PATH_TITLE', 'FTP-Serverpfad');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_FTP_PATH_DESC', 'Tragen Sie hier den kompletten Serverpfad des FTP-Servers ein, wo die Datenbanksicherung abgelegt werden soll.');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_TITLE', 'Automatisches L&ouml;schen aktivieren?');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_DESC', 'Automatisches L&ouml;schen f&uuml;r alte Datenbank-Sicherungen aktivieren? Bei <strong>ja</strong> werden alle Dateien mit der Endung <i>.sql</i> und <i>.sql.gz</i>, die &auml;lter sind als bei <i>Zeitraum automatisches L&ouml;schen</i> eingestellt automatisch aus dem Ordner <i>' . (defined('DIR_ADMIN') ? DIR_ADMIN : 'admin/') . 'backups</i> entfernt.');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_DAYS_TITLE', 'Zeitraum automatisches L&ouml;schen');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETEOLDBACKUPS_DAYS_DESC', 'Nach wievielen Tagen sollen alte Datenbank-Sicherungen gel&ouml;scht werden? Angabe bitte nur als Tage und als Ziffer eingeben (nur bei <i>Automatisches L&ouml;schen aktivieren?</i> = <strong>ja</strong>)');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETELOGS_TITLE', 'Alte LOG-Files l&ouml;schen');
-define('MODULE_MITS_CRON_DATABASE_BACKUPS_DELETELOGS_DESC', 'Sollen alte LOG-Files vom Typ mod_notice, mod_strict und mod_deprecated ebenfalls automatisch gel&ouml;scht werden? (nur bei <i>Automatisches L&ouml;schen aktivieren?</i> = <strong>ja</strong>, Zeitraum ist identisch mit der Angabe bei <i>Zeitraum automatisches L&ouml;schen</i>)');
+',
+
+  'MODULE_' . $modulname . '_STATUS_TITLE' => 'Status',
+  'MODULE_' . $modulname . '_STATUS_DESC'  => 'Enable module',
+
+  'MODULE_' . $modulname . '_HASH_TITLE' => 'Hash value',
+  'MODULE_' . $modulname . '_HASH_DESC'  => 'The parameter <strong>pw</strong> must be replaced by the value entered as hash, as shown in this URL example: pw=<strong style="color:#900">' . $mits_default_hash . '</strong>. For security reasons this value should be changed from time to time. The changed hash value must also be used in the script call URL.',
+
+  'MODULE_' . $modulname . '_GZIP_TITLE' => 'GZIP compression',
+  'MODULE_' . $modulname . '_GZIP_DESC'  => 'Should GZIP compression be used for the database backup?',
+
+  'MODULE_' . $modulname . '_COMPLETE_INSERT_TITLE' => 'Option --complete-insert',
+  'MODULE_' . $modulname . '_COMPLETE_INSERT_DESC'  => 'Complete inserts add column names to the SQL dump. This improves readability and reliability. It increases the dump size, but in combination with extended inserts this is usually negligible.',
+
+  'MODULE_' . $modulname . '_EXTENDED_INSERT_TITLE' => 'Option --extended-insert',
+  'MODULE_' . $modulname . '_EXTENDED_INSERT_DESC'  => 'Extended insert combines several data rows into one INSERT query. This significantly reduces the file size for large SQL dumps, increases INSERT speed during import and is generally recommended.',
+
+  'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Send database backup by email',
+  'MODULE_' . $modulname . '_SENDMAIL_DESC'  => 'Should the database backup be sent by email?',
+
+  'MODULE_' . $modulname . '_MAILADDRESS_TITLE' => 'Email address for backup',
+  'MODULE_' . $modulname . '_MAILADDRESS_DESC'  => 'Enter the email address to which the database backup should be sent. Please note possible size limits for large attachments.',
+
+  'MODULE_' . $modulname . '_SENDFTP_TITLE' => 'Send database backup by FTP',
+  'MODULE_' . $modulname . '_SENDFTP_DESC'  => 'Should the database backup be uploaded to another server by FTP?',
+
+  'MODULE_' . $modulname . '_FTP_HOST_TITLE' => 'FTP server',
+  'MODULE_' . $modulname . '_FTP_HOST_DESC'  => 'Hostname of the FTP server.',
+
+  'MODULE_' . $modulname . '_FTP_USER_TITLE' => 'FTP username',
+  'MODULE_' . $modulname . '_FTP_USER_DESC'  => 'Enter the FTP username.',
+
+  'MODULE_' . $modulname . '_FTP_PASS_TITLE' => 'FTP password',
+  'MODULE_' . $modulname . '_FTP_PASS_DESC'  => 'Enter the FTP password.',
+
+  'MODULE_' . $modulname . '_FTP_PORT_TITLE' => 'FTP port',
+  'MODULE_' . $modulname . '_FTP_PORT_DESC'  => 'Enter the FTP port, e.g. 21.',
+
+  'MODULE_' . $modulname . '_FTP_PATH_TITLE' => 'FTP server path',
+  'MODULE_' . $modulname . '_FTP_PATH_DESC'  => 'Enter the complete server path on the FTP server where the database backup should be stored.',
+
+  'MODULE_' . $modulname . '_DELETEOLDBACKUPS_TITLE' => 'Enable automatic deletion',
+  'MODULE_' . $modulname . '_DELETEOLDBACKUPS_DESC'  => 'Enable automatic deletion for old database backups? If set to <strong>yes</strong>, all files ending in <i>.sql</i> and <i>.sql.gz</i> that are older than the configured deletion period will be removed automatically from the folder <i>' . (defined('DIR_ADMIN') ? DIR_ADMIN : 'admin/') . 'backups</i>.',
+
+  'MODULE_' . $modulname . '_DELETEOLDBACKUPS_DAYS_TITLE' => 'Automatic deletion period',
+  'MODULE_' . $modulname . '_DELETEOLDBACKUPS_DAYS_DESC'  => 'After how many days should old database backups be deleted? Please enter the value as days and digits only. Only relevant if <i>Enable automatic deletion</i> is set to <strong>yes</strong>.',
+
+  'MODULE_' . $modulname . '_DELETELOGS_TITLE' => 'Delete old log files',
+  'MODULE_' . $modulname . '_DELETELOGS_DESC'  => 'Should old log files of type mod_notice, mod_strict and mod_deprecated also be deleted automatically? Only relevant if <i>Enable automatic deletion</i> is set to <strong>yes</strong>. The period is identical to the value configured for <i>Automatic deletion period</i>.',
+
+  'MODULE_' . $modulname . '_UPDATE_AVAILABLE_TITLE' => ' <span style="font-weight:bold;color:#900;background:#ff6;padding:2px;border:1px solid #900;">Please update module!</span>',
+  'MODULE_' . $modulname . '_UPDATE_AVAILABLE_DESC'  => '',
+  'MODULE_' . $modulname . '_UPDATE_FINISHED'        => 'MITS Cron Database Backups has been updated.',
+  'MODULE_' . $modulname . '_UPDATE_ERROR'           => 'Error',
+  'MODULE_' . $modulname . '_UPDATE_MODUL'           => 'Update module',
+  'MODULE_' . $modulname . '_DELETE_MODUL'           => 'Completely remove MITS Cron Database Backups from server',
+  'MODULE_' . $modulname . '_CONFIRM_DELETE_MODUL'   => 'Do you really want to remove MITS Cron Database Backups including files from the server?',
+  'MODULE_' . $modulname . '_DELETE_FINISHED'        => 'MITS Cron Database Backups has been removed from the server.',
+);
+
+foreach ($lang_array as $key => $val) {
+    defined($key) || define($key, $val);
+}
