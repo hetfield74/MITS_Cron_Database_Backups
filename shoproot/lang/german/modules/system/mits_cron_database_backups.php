@@ -23,7 +23,7 @@ $mits_hash = defined($module_key . '_HASH') ? constant($module_key . '_HASH') : 
 if (defined($module_key . '_STATUS') && constant($module_key . '_STATUS') == 'true') {
   $mits_db_backup_cronjoburl = '<hr /><h3>CronJob-URL:</h3><textarea style="width: 100%;height:auto;">' . xtc_catalog_href_link('callback/mits_cron_database_backups/mits_cron_database_backups.php', 'pw=' . $mits_hash, 'SSL') . '</textarea><p>Tragen Sie in Ihren CronJobs diese URL ein!</p><p>Der Parameter <strong style="color:#900">pw</strong> ist durch den gesetzten HASH-Wert zu ersetzen. Sollten Sie also den HASH-Wert &auml;ndern, dann m&uuml;ssen Sie die dadurch ge&auml;nderte URL auch bei Ihrem angelegten CronJob anpassen.</p>';
   $mits_db_backup_button = '<hr /><div style="text-align:center;padding:10px;"><a href="'.xtc_catalog_href_link('callback/mits_cron_database_backups/mits_cron_database_backups.php', '', 'SSL').'?pw='.$mits_hash.'" class="button" onclick="this.blur();"><strong>Datenbank-Backup starten</strong></a></div>';
-  $mits_db_restore_button = '<div style="text-align:center;padding:10px;"><a href="'.xtc_href_link('mits_cron_database_restore.php', '', 'NONSSL').'" class="button" onclick="this.blur();"><strong>Datenbank-R&uuml;cksicherung &ouml;ffnen</strong></a></div><hr />';
+  $mits_db_restore_button = '<div style="text-align:center;padding:10px;"><a href="'.xtc_href_link('mits_cron_database_restore.php', '', 'NONSSL').'" class="button" onclick="this.blur();"><strong>Datenbank-Werkzeuge &ouml;ffnen</strong></a></div><hr />';
 } else {
   $mits_db_backup_cronjoburl = '';
   $mits_db_backup_button = '';
@@ -52,6 +52,7 @@ $lang_array = array(
         <li>Automatisch regelm&auml;&szlig;ige Datenbanksicherungen des Shops erstellen lassen</li>
         <li>Schnelle R&uuml;cksicherung vorhandener SQL-/SQL.GZ-Backups im Adminbereich per mysql-Client</li>
         <li>Optionaler modified Scheduled Task: ruft die bestehende Callback-URL per cURL auf</li>
+        <li>Optional Tabellen-Backup als Ordner mit einer SQL.GZ-Datei pro Tabelle erstellen</li>
         <li>Datenbanksicherung optional per E-Mail erhalten</li>
         <li>Datenbanksicherung optional per FTP auf einen anderen Backup-Server hochladen</li>
         <li>Optional alte Datenbanksicherungen automatisch nach x Tagen l&ouml;schen</li>
@@ -84,6 +85,12 @@ $lang_array = array(
 
   'MODULE_' . $modulname . '_EXTENDED_INSERT_TITLE' => 'Option --extended-insert',
   'MODULE_' . $modulname . '_EXTENDED_INSERT_DESC'  => 'Extended Insert kombiniert mehrere Datenzeilen in einer einzigen INSERT-Abfrage. Dies verringert signifikant die Dateigr&ouml;&szlig;e f&uuml;r gro&szlig;e SQL-Dumps, erh&ouml;ht die INSERT-Geschwindigkeit beim Import und wird allgemein empfohlen.',
+
+  'MODULE_' . $modulname . '_SQL_COMMENTS_TITLE' => 'Kommentare im SQL-Dump',
+  'MODULE_' . $modulname . '_SQL_COMMENTS_DESC'  => 'Soll der SQL-Dump kommentiert werden? Zus&auml;tzlich zu den mysqldump-Kommentaren wird ein kurzer MITS-Kopfkommentar eingef&uuml;gt. Kommentare werden beim Restore ignoriert.',
+
+  'MODULE_' . $modulname . '_BACKUP_MODE_TITLE' => 'Backup-Modus',
+  'MODULE_' . $modulname . '_BACKUP_MODE_DESC'  => '<strong>single</strong> erstellt eine SQL-/SQL.GZ-Datei f&uuml;r die komplette Datenbank. <strong>tables</strong> erstellt einen eigenen Backupordner mit einer SQL.GZ-Datei pro Tabelle.',
 
   'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Datenbanksicherung per E-Mail versenden',
   'MODULE_' . $modulname . '_SENDMAIL_DESC'  => 'Soll die Datenbanksicherung per E-Mail versendet werden?',

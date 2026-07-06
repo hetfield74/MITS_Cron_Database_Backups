@@ -154,14 +154,264 @@ function mits_cdb_restore_backup_dirs()
 
 function mits_cdb_restore_file_allowed($filename)
 {
+    return (bool)preg_match('/^[A-Za-z0-9_.-]+\.(sql|sql\.gz|zip)$/i', $filename);
+}
+
+function mits_cdb_restore_folder_allowed($foldername)
+{
+    return (bool)preg_match('/^[A-Za-z0-9_.-]+_tables$/i', $foldername);
+}
+
+function mits_cdb_restore_table_file_allowed($filename)
+{
     return (bool)preg_match('/^[A-Za-z0-9_.-]+\.(sql|sql\.gz)$/i', $filename);
+}
+
+function mits_cdb_restore_directory_size($dir)
+{
+    $size = 0;
+    foreach (glob(rtrim($dir, '/\\') . DIRECTORY_SEPARATOR . '*') as $file) {
+        if (is_link($file)) {
+            continue;
+        }
+        if (is_file($file)) {
+            $size += filesize($file);
+        }
+    }
+    return $size;
+}
+
+function mits_cdb_restore_directory_mtime($dir)
+{
+    $mtime = is_dir($dir) ? filemtime($dir) : 0;
+    foreach (glob(rtrim($dir, '/\\') . DIRECTORY_SEPARATOR . '*') as $file) {
+        if (is_link($file)) {
+            continue;
+        }
+        if (is_file($file)) {
+            $mtime = max($mtime, filemtime($file));
+        }
+    }
+    return $mtime;
+}
+
+function mits_cdb_restore_collect_table_files($dir)
+{
+    $files = array();
+    $dir_real = realpath($dir);
+    if ($dir_real === false || !is_dir($dir_real)) {
+        return $files;
+    }
+    $dir_real_slash = mits_cdb_restore_trailing_slash($dir_real);
+
+    foreach (array('*.sql.gz', '*.sql') as $pattern) {
+        foreach (glob(rtrim($dir, '/\\') . DIRECTORY_SEPARATOR . $pattern) as $file) {
+            if (!is_file($file) || is_link($file)) {
+                continue;
+            }
+            $filename = basename($file);
+            if (!mits_cdb_restore_table_file_allowed($filename) || strpos($filename, '.restore_tmp_') !== false) {
+                continue;
+            }
+            $file_real = realpath($file);
+            if ($file_real === false || strpos($file_real, $dir_real_slash) !== 0) {
+                continue;
+            }
+            $files[] = array(
+                'filename' => $filename,
+                'path' => $file_real,
+                'size' => filesize($file_real),
+                'mtime' => filemtime($file_real),
+                'compressed' => (substr(strtolower($filename), -3) === '.gz'),
+            );
+        }
+    }
+    usort($files, function ($a, $b) {
+        return strcmp($a['filename'], $b['filename']);
+    });
+    return $files;
+}
+
+function mits_cdb_restore_table_file_label($filename)
+{
+    $label = preg_replace('/^[0-9]+_/', '', (string)$filename);
+    $label = preg_replace('/\.sql(\.gz)?$/i', '', $label);
+    return $label;
+}
+
+function mits_cdb_restore_get_tables()
+{
+    $tables = array();
+    $views = array();
+    $tables_query = xtc_db_query('SHOW FULL TABLES');
+
+    while ($table = xtc_db_fetch_array($tables_query)) {
+        $values = array_values($table);
+        if (empty($values[0])) {
+            continue;
+        }
+        $type = isset($values[1]) ? strtoupper((string)$values[1]) : '';
+        if ($type == 'VIEW') {
+            $views[] = $values[0];
+        } else {
+            $tables[] = $values[0];
+        }
+    }
+
+    sort($tables, SORT_STRING);
+    sort($views, SORT_STRING);
+    return array_merge($tables, $views);
+}
+
+function mits_cdb_restore_selected_tables($posted_tables)
+{
+    $selected = array();
+    if (!is_array($posted_tables)) {
+        return $selected;
+    }
+    $allowed = array_flip(mits_cdb_restore_get_tables());
+    foreach ($posted_tables as $table) {
+        $table = (string)$table;
+        if (isset($allowed[$table])) {
+            $selected[] = $table;
+        }
+    }
+    return array_values(array_unique($selected));
+}
+
+function mits_cdb_restore_selected_table_files($backup, $posted_files)
+{
+    $available = array();
+    foreach (mits_cdb_restore_collect_table_files($backup['path']) as $file) {
+        $available[$file['filename']] = $file;
+    }
+
+    if (!is_array($posted_files) || empty($posted_files)) {
+        return array();
+    }
+
+    $selected = array();
+    foreach ($posted_files as $file) {
+        $file = basename((string)$file);
+        if (isset($available[$file])) {
+            $selected[$file] = $available[$file];
+        }
+    }
+    return array_values($selected);
+}
+
+function mits_cdb_restore_mysql_password_arg()
+{
+    if (defined('DB_SERVER_PASSWORD') && DB_SERVER_PASSWORD != '') {
+        return ' -p' . escapeshellarg(DB_SERVER_PASSWORD);
+    }
+    return '';
+}
+
+function mits_cdb_restore_dump_comments_option()
+{
+    if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_SQL_COMMENTS') && MODULE_MITS_CRON_DATABASE_BACKUPS_SQL_COMMENTS == 'false') {
+        return ' --skip-comments';
+    }
+    return ' --comments';
+}
+
+function mits_cdb_restore_dump_complete_insert_option()
+{
+    if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_COMPLETE_INSERT') && MODULE_MITS_CRON_DATABASE_BACKUPS_COMPLETE_INSERT == 'false') {
+        return ' --complete-insert=FALSE';
+    }
+    return '';
+}
+
+function mits_cdb_restore_dump_extended_insert_option()
+{
+    if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_EXTENDED_INSERT') && MODULE_MITS_CRON_DATABASE_BACKUPS_EXTENDED_INSERT == 'false') {
+        return ' --extended-insert=FALSE';
+    }
+    return '';
+}
+
+function mits_cdb_restore_safe_name($value)
+{
+    return preg_replace('/[^A-Za-z0-9_.-]/', '_', (string)$value);
+}
+
+function mits_cdb_restore_mysqldump_command($target_file, $tables = array())
+{
+    $command = 'mysqldump --opt'
+      . mits_cdb_restore_dump_comments_option()
+      . mits_cdb_restore_dump_complete_insert_option()
+      . mits_cdb_restore_dump_extended_insert_option()
+      . ' -h' . escapeshellarg(DB_SERVER)
+      . ' -u' . escapeshellarg(DB_SERVER_USERNAME)
+      . mits_cdb_restore_mysql_password_arg()
+      . ' ' . escapeshellarg(DB_DATABASE);
+
+    foreach ($tables as $table) {
+        $command .= ' ' . escapeshellarg($table);
+    }
+
+    $command .= ' > ' . escapeshellarg($target_file) . ' 2>&1';
+    return $command;
+}
+
+function mits_cdb_restore_sql_header($mode, $extra = '')
+{
+    if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_SQL_COMMENTS') && MODULE_MITS_CRON_DATABASE_BACKUPS_SQL_COMMENTS == 'false') {
+        return '';
+    }
+
+    $lines = array(
+      '-- ------------------------------------------------------------',
+      '-- MITS Cron Database Backups',
+      '-- Created: ' . date('Y-m-d H:i:s'),
+      '-- Database: ' . (defined('DB_DATABASE') ? DB_DATABASE : ''),
+      '-- Backup mode: ' . $mode,
+    );
+    if ($extra != '') {
+        $lines[] = '-- ' . $extra;
+    }
+    $lines[] = '-- ------------------------------------------------------------';
+    $lines[] = '';
+    return implode("\n", $lines) . "\n";
+}
+
+function mits_cdb_restore_prepend_text($file, $text)
+{
+    if ($text == '' || !is_file($file)) {
+        return true;
+    }
+
+    $temp_file = $file . '.prepend_tmp_' . mt_rand(1000, 9999);
+    $out = @fopen($temp_file, 'wb');
+    if (!$out) {
+        return false;
+    }
+    fwrite($out, $text);
+    $in = @fopen($file, 'rb');
+    if (!$in) {
+        fclose($out);
+        @unlink($temp_file);
+        return false;
+    }
+    while (!feof($in)) {
+        fwrite($out, fread($in, 1048576));
+    }
+    fclose($in);
+    fclose($out);
+    if (!@rename($temp_file, $file)) {
+        @unlink($temp_file);
+        return false;
+    }
+    return true;
 }
 
 function mits_cdb_restore_collect_backups($dirs)
 {
     $backups = array();
     foreach ($dirs as $dir_key => $dir) {
-        foreach (array('*.sql', '*.sql.gz') as $pattern) {
+        foreach (array('*.sql', '*.sql.gz', '*.zip') as $pattern) {
             foreach (glob($dir['path'] . $pattern) as $file) {
                 if (!is_file($file)) {
                     continue;
@@ -179,8 +429,35 @@ function mits_cdb_restore_collect_backups($dirs)
                     'size' => filesize($file),
                     'mtime' => filemtime($file),
                     'compressed' => (substr(strtolower($filename), -3) === '.gz'),
+                    'archive' => (substr(strtolower($filename), -4) === '.zip'),
+                    'tables_dir' => false,
+                    'table_count' => 0,
                 );
             }
+        }
+
+        foreach (glob($dir['path'] . '*', GLOB_ONLYDIR) as $folder) {
+            $foldername = basename($folder);
+            if (!mits_cdb_restore_folder_allowed($foldername)) {
+                continue;
+            }
+            $table_files = mits_cdb_restore_collect_table_files($folder);
+            if (empty($table_files)) {
+                continue;
+            }
+            $backups[] = array(
+                'id' => $dir_key . '|dir:' . $foldername,
+                'dir_key' => $dir_key,
+                'filename' => $foldername,
+                'path' => realpath($folder),
+                'directory' => $dir['label'],
+                'size' => mits_cdb_restore_directory_size($folder),
+                'mtime' => mits_cdb_restore_directory_mtime($folder),
+                'compressed' => true,
+                'archive' => false,
+                'tables_dir' => true,
+                'table_count' => count($table_files),
+            );
         }
     }
 
@@ -202,8 +479,46 @@ function mits_cdb_restore_resolve_backup($id, $dirs)
     }
 
     $dir_key = $parts[0];
-    $filename = basename($parts[1]);
-    if (!isset($dirs[$dir_key]) || !mits_cdb_restore_file_allowed($filename)) {
+    $backup_name = $parts[1];
+    if (!isset($dirs[$dir_key])) {
+        return false;
+    }
+
+    if (strpos($backup_name, 'dir:') === 0) {
+        $foldername = basename(substr($backup_name, 4));
+        if (!mits_cdb_restore_folder_allowed($foldername)) {
+            return false;
+        }
+        $dir_real = realpath($dirs[$dir_key]['path']);
+        $folder_real = realpath($dirs[$dir_key]['path'] . $foldername);
+        if ($dir_real === false || $folder_real === false || !is_dir($folder_real)) {
+            return false;
+        }
+        $dir_real = mits_cdb_restore_trailing_slash($dir_real);
+        if (strpos($folder_real, $dir_real) !== 0) {
+            return false;
+        }
+        $table_files = mits_cdb_restore_collect_table_files($folder_real);
+        if (empty($table_files)) {
+            return false;
+        }
+        return array(
+            'id' => $dir_key . '|dir:' . $foldername,
+            'dir_key' => $dir_key,
+            'filename' => $foldername,
+            'path' => $folder_real,
+            'directory' => $dirs[$dir_key]['label'],
+            'size' => mits_cdb_restore_directory_size($folder_real),
+            'mtime' => mits_cdb_restore_directory_mtime($folder_real),
+            'compressed' => true,
+            'archive' => false,
+            'tables_dir' => true,
+            'table_count' => count($table_files),
+        );
+    }
+
+    $filename = basename($backup_name);
+    if (!mits_cdb_restore_file_allowed($filename)) {
         return false;
     }
 
@@ -227,8 +542,178 @@ function mits_cdb_restore_resolve_backup($id, $dirs)
         'size' => filesize($file_real),
         'mtime' => filemtime($file_real),
         'compressed' => (substr(strtolower($filename), -3) === '.gz'),
+        'archive' => (substr(strtolower($filename), -4) === '.zip'),
+        'tables_dir' => false,
+        'table_count' => 0,
     );
 }
+
+function mits_cdb_restore_send_download($backup)
+{
+    if (!is_array($backup) || !empty($backup['tables_dir']) || empty($backup['path']) || !is_file($backup['path']) || !is_readable($backup['path'])) {
+        return false;
+    }
+
+    $filename = basename($backup['filename']);
+    if (!mits_cdb_restore_file_allowed($filename)) {
+        return false;
+    }
+
+    if (function_exists('apache_setenv')) {
+        @apache_setenv('no-gzip', '1');
+    }
+    @ini_set('zlib.output_compression', 'Off');
+
+    while (ob_get_level() > 0) {
+        @ob_end_clean();
+    }
+
+    header('Content-Type: application/octet-stream');
+    header('Content-Description: File Transfer');
+    header('Content-Disposition: attachment; filename="' . $filename . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
+    header('Content-Transfer-Encoding: binary');
+    header('Content-Length: ' . filesize($backup['path']));
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: private, no-store, no-cache, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+
+    $handle = fopen($backup['path'], 'rb');
+    if ($handle === false) {
+        return false;
+    }
+
+    while (!feof($handle)) {
+        echo fread($handle, 1048576);
+        flush();
+    }
+    fclose($handle);
+    exit;
+}
+
+function mits_cdb_restore_resolve_table_download($backup, $filename)
+{
+    if (!is_array($backup) || empty($backup['tables_dir']) || empty($backup['path']) || !is_dir($backup['path'])) {
+        return false;
+    }
+    $filename = basename((string)$filename);
+    if (!mits_cdb_restore_table_file_allowed($filename)) {
+        return false;
+    }
+    $dir_real = realpath($backup['path']);
+    $file_real = realpath($backup['path'] . DIRECTORY_SEPARATOR . $filename);
+    if ($dir_real === false || $file_real === false || !is_file($file_real)) {
+        return false;
+    }
+    $dir_real = mits_cdb_restore_trailing_slash($dir_real);
+    if (strpos($file_real, $dir_real) !== 0) {
+        return false;
+    }
+    return array(
+        'filename' => $filename,
+        'path' => $file_real,
+        'size' => filesize($file_real),
+    );
+}
+
+function mits_cdb_restore_send_table_download($table_file)
+{
+    if (!is_array($table_file) || empty($table_file['path']) || !is_file($table_file['path']) || !is_readable($table_file['path'])) {
+        return false;
+    }
+    $filename = basename($table_file['filename']);
+    if (!mits_cdb_restore_table_file_allowed($filename)) {
+        return false;
+    }
+
+    if (function_exists('apache_setenv')) {
+        @apache_setenv('no-gzip', '1');
+    }
+    @ini_set('zlib.output_compression', 'Off');
+
+    while (ob_get_level() > 0) {
+        @ob_end_clean();
+    }
+
+    header('Content-Type: application/octet-stream');
+    header('Content-Description: File Transfer');
+    header('Content-Disposition: attachment; filename="' . $filename . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
+    header('Content-Transfer-Encoding: binary');
+    header('Content-Length: ' . filesize($table_file['path']));
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: private, no-store, no-cache, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+
+    $handle = fopen($table_file['path'], 'rb');
+    if ($handle === false) {
+        return false;
+    }
+    while (!feof($handle)) {
+        echo fread($handle, 1048576);
+        flush();
+    }
+    fclose($handle);
+    exit;
+}
+
+function mits_cdb_restore_delete_backup_item($backup, &$messages)
+{
+    if (!is_array($backup) || empty($backup['path'])) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE;
+        return false;
+    }
+
+    if (!empty($backup['tables_dir'])) {
+        if (!is_dir($backup['path']) || !mits_cdb_restore_folder_allowed($backup['filename'])) {
+            $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE;
+            return false;
+        }
+        $name = $backup['filename'];
+        if (mits_cdb_restore_delete_directory($backup['path'])) {
+            $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_SUCCESS', 'Backup wurde gel&ouml;scht: %s'), $name);
+            return true;
+        }
+        $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_ERROR', 'Backup konnte nicht gel&ouml;scht werden: %s'), $name);
+        return false;
+    }
+
+    $filename = basename($backup['filename']);
+    if (!mits_cdb_restore_file_allowed($filename) || !is_file($backup['path'])) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE;
+        return false;
+    }
+    if (@unlink($backup['path'])) {
+        $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_SUCCESS', 'Backup wurde gel&ouml;scht: %s'), $filename);
+        return true;
+    }
+    $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_ERROR', 'Backup konnte nicht gel&ouml;scht werden: %s'), $filename);
+    return false;
+}
+
+function mits_cdb_restore_delete_table_file($backup, $filename, &$messages)
+{
+    $table_file = mits_cdb_restore_resolve_table_download($backup, $filename);
+    if ($table_file === false) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE;
+        return false;
+    }
+
+    if (!@unlink($table_file['path'])) {
+        $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_ERROR', 'Tabellendatei konnte nicht gel&ouml;scht werden: %s'), $table_file['filename']);
+        return false;
+    }
+
+    $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_SUCCESS', 'Tabellendatei wurde gel&ouml;scht: %s'), $table_file['filename']);
+
+    if (empty(mits_cdb_restore_collect_table_files($backup['path']))) {
+        mits_cdb_restore_delete_directory($backup['path']);
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_FOLDER_EMPTY', 'Der Tabellen-Backupordner enthielt keine weiteren Tabellendateien und wurde entfernt.');
+    }
+
+    return true;
+}
+
 
 function mits_cdb_restore_format_filesize($bytes)
 {
@@ -373,6 +858,570 @@ function mits_cdb_restore_decompress_gz($source, $target, &$messages)
     return true;
 }
 
+
+function mits_cdb_restore_delete_directory($dir)
+{
+    if (!file_exists($dir)) {
+        return true;
+    }
+
+    if (is_link($dir) || !is_dir($dir)) {
+        return @unlink($dir);
+    }
+
+    $files = array_diff(scandir($dir), array('.', '..'));
+    foreach ($files as $file) {
+        $path = $dir . DIRECTORY_SEPARATOR . $file;
+        if (is_link($path)) {
+            @unlink($path);
+        } elseif (is_dir($path)) {
+            mits_cdb_restore_delete_directory($path);
+        } else {
+            @unlink($path);
+        }
+    }
+
+    return @rmdir($dir);
+}
+
+function mits_cdb_restore_extract_zip_sql($source, $temp_dir, $target_file, &$messages)
+{
+    if (!class_exists('ZipArchive')) {
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_ERROR_ZIPARCHIVE', 'Die PHP-Erweiterung ZipArchive ist nicht aktiv. ZIP-Backups k&ouml;nnen deshalb nicht entpackt werden.');
+        return false;
+    }
+
+    $zip = new ZipArchive();
+    if ($zip->open($source) !== true) {
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_ERROR_ZIP_OPEN', 'Die ZIP-Datei konnte nicht ge&ouml;ffnet werden.');
+        return false;
+    }
+
+    @mkdir($temp_dir, 0777, true);
+    if (!is_dir($temp_dir) || !is_writable($temp_dir)) {
+        $zip->close();
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TEMPFILE;
+        return false;
+    }
+
+    $sql_files = array();
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $entry = $zip->getNameIndex($i);
+        $entry_name = basename($entry);
+        if ($entry_name == '' || $entry_name != $entry || !preg_match('/^[A-Za-z0-9_.-]+\.sql$/i', $entry_name)) {
+            continue;
+        }
+        if (!$zip->extractTo($temp_dir, $entry)) {
+            continue;
+        }
+        $entry_path = $temp_dir . DIRECTORY_SEPARATOR . $entry_name;
+        if (is_file($entry_path) && filesize($entry_path) > 0) {
+            $sql_files[] = $entry_path;
+        }
+    }
+    $zip->close();
+
+    if (empty($sql_files)) {
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_ERROR_ZIP_EMPTY', 'In der ZIP-Datei wurden keine SQL-Dateien gefunden.');
+        return false;
+    }
+
+    sort($sql_files, SORT_STRING);
+    $out = @fopen($target_file, 'wb');
+    if (!$out) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TEMPFILE;
+        return false;
+    }
+
+    fwrite($out, "SET FOREIGN_KEY_CHECKS=0;\n\n");
+    foreach ($sql_files as $sql_file) {
+        $in = @fopen($sql_file, 'rb');
+        if (!$in) {
+            fclose($out);
+            @unlink($target_file);
+            $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TEMPFILE;
+            return false;
+        }
+        fwrite($out, "\n-- MITS ZIP part: " . basename($sql_file) . "\n");
+        while (!feof($in)) {
+            fwrite($out, fread($in, 1048576));
+        }
+        fclose($in);
+        fwrite($out, "\n");
+    }
+    fwrite($out, "\nSET FOREIGN_KEY_CHECKS=1;\n");
+    fclose($out);
+
+    if (!is_file($target_file) || filesize($target_file) < 1) {
+        @unlink($target_file);
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TEMPFILE;
+        return false;
+    }
+
+    $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_ZIP_UNPACKED', 'ZIP-Backup wurde tempor&auml;r entpackt und f&uuml;r den Import vorbereitet.');
+    return true;
+}
+
+function mits_cdb_restore_create_manual_backup($target_dir, $mode, $selected_tables, &$messages)
+{
+    $target_dir = mits_cdb_restore_trailing_slash($target_dir);
+    if (!is_dir($target_dir)) {
+        @mkdir($target_dir, 0777, true);
+    }
+    if (!is_dir($target_dir) || !is_writable($target_dir)) {
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_ERROR_DIR', 'Der Backupordner ist nicht beschreibbar.');
+        return false;
+    }
+
+    if (empty($selected_tables)) {
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_ERROR_NO_TABLES', 'Es wurden keine Tabellen ausgew&auml;hlt.');
+        return false;
+    }
+
+    $safe_database = mits_cdb_restore_safe_name(DB_DATABASE);
+    $backup_base = $safe_database . '_' . date('Y-m-d_H-i-s');
+    $mode = ($mode == 'tables') ? 'tables' : 'single';
+
+    if ($mode == 'tables') {
+        $backup_dir = $target_dir . $backup_base . '_tables';
+        mits_cdb_restore_delete_directory($backup_dir);
+        @mkdir($backup_dir, 0777, true);
+        if (!is_dir($backup_dir) || !is_writable($backup_dir)) {
+            $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_ERROR_DIR', 'Der Backupordner ist nicht beschreibbar.');
+            return false;
+        }
+
+        $manifest = array(
+          '<?php die(\'Direct Access to this location is not allowed.\'); ?>',
+          '# MITS Cron Database Backups',
+          '# Created: ' . date('Y-m-d H:i:s'),
+          '# Database: ' . DB_DATABASE,
+          '# Tables: ' . count($selected_tables),
+          ''
+        );
+        @file_put_contents($backup_dir . DIRECTORY_SEPARATOR . 'mits_manifest.php', implode("\n", $manifest));
+
+        $counter = 1;
+        foreach ($selected_tables as $table) {
+            $sql_file = $backup_dir . DIRECTORY_SEPARATOR . sprintf('%04d_%s.sql', $counter, mits_cdb_restore_safe_name($table));
+            $output = array();
+            $return = 1;
+            exec(mits_cdb_restore_mysqldump_command($sql_file, array($table)), $output, $return);
+            if ($return !== 0 || !is_file($sql_file) || filesize($sql_file) < 1) {
+                mits_cdb_restore_delete_directory($backup_dir);
+                $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_ERROR_TABLE', 'Die Tabelle %s konnte nicht gesichert werden.'), $table);
+                if (!empty($output)) {
+                    $messages[] = implode("\n", $output);
+                }
+                return false;
+            }
+
+            $header = mits_cdb_restore_sql_header('tables', 'Table: ' . $table) . "SET FOREIGN_KEY_CHECKS=0;\n\n";
+            if (!mits_cdb_restore_prepend_text($sql_file, $header)) {
+                mits_cdb_restore_delete_directory($backup_dir);
+                $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_ERROR_HEADER', 'Der SQL-Kopf konnte nicht eingef&uuml;gt werden.');
+                return false;
+            }
+            @file_put_contents($sql_file, "\nSET FOREIGN_KEY_CHECKS=1;\n", FILE_APPEND);
+
+            $gzip_output = array();
+            $gzip_return = 1;
+            exec('gzip -f ' . escapeshellarg($sql_file) . ' 2>&1', $gzip_output, $gzip_return);
+            if ($gzip_return !== 0 || !is_file($sql_file . '.gz') || filesize($sql_file . '.gz') < 1) {
+                mits_cdb_restore_delete_directory($backup_dir);
+                $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_ERROR_TABLE', 'Die Tabelle %s konnte nicht gesichert werden.'), $table);
+                if (!empty($gzip_output)) {
+                    $messages[] = implode("\n", $gzip_output);
+                }
+                return false;
+            }
+            $counter++;
+        }
+
+        $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_SUCCESS_TABLES', 'Tabellen-Backup wurde erstellt: %s (%s Tabellen)'), basename($backup_dir), count($selected_tables));
+        return $backup_dir;
+    }
+
+    $sql_file = $target_dir . $backup_base . '.sql';
+    $output = array();
+    $return = 1;
+    exec(mits_cdb_restore_mysqldump_command($sql_file, $selected_tables), $output, $return);
+    if ($return !== 0 || !is_file($sql_file) || filesize($sql_file) < 1) {
+        @unlink($sql_file);
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_ERROR_CREATE', 'Die manuelle Datenbanksicherung konnte nicht erstellt werden.');
+        if (!empty($output)) {
+            $messages[] = implode("\n", $output);
+        }
+        return false;
+    }
+
+    $header = mits_cdb_restore_sql_header('single', count($selected_tables) . ' tables selected');
+    if (!mits_cdb_restore_prepend_text($sql_file, $header)) {
+        @unlink($sql_file);
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_ERROR_HEADER', 'Der SQL-Kopf konnte nicht eingef&uuml;gt werden.');
+        return false;
+    }
+
+    $final_file = $sql_file;
+    if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP') && MODULE_MITS_CRON_DATABASE_BACKUPS_GZIP == 'true') {
+        $gzip_output = array();
+        $gzip_return = 1;
+        exec('gzip -f ' . escapeshellarg($sql_file) . ' 2>&1', $gzip_output, $gzip_return);
+        if ($gzip_return !== 0 || !is_file($sql_file . '.gz') || filesize($sql_file . '.gz') < 1) {
+            @unlink($sql_file . '.gz');
+            $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_ERROR_GZIP', 'Die GZIP-Komprimierung der manuellen Sicherung ist fehlgeschlagen.');
+            if (!empty($gzip_output)) {
+                $messages[] = implode("\n", $gzip_output);
+            }
+            return false;
+        }
+        $final_file = $sql_file . '.gz';
+    }
+
+    $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_SUCCESS_SINGLE', 'Manuelles Backup wurde erstellt: %s'), basename($final_file));
+    return $final_file;
+}
+
+function mits_cdb_restore_import_sql_file($file, &$messages)
+{
+    $command = 'mysql --binary-mode=1' . mits_cdb_restore_mysql_args() . ' < ' . escapeshellarg($file) . ' 2>&1';
+    $output = array();
+    $return = 1;
+    exec($command, $output, $return);
+    if ($return === 0) {
+        return true;
+    }
+    if (!empty($output)) {
+        $messages[] = implode("\n", $output);
+    }
+    return false;
+}
+
+function mits_cdb_restore_db_link()
+{
+    global $db_link;
+    return (isset($db_link) && is_object($db_link)) ? $db_link : false;
+}
+
+function mits_cdb_restore_sql_uncommented_start($sql)
+{
+    $sql = ltrim((string)$sql);
+    $changed = true;
+    while ($changed && $sql != '') {
+        $changed = false;
+        $sql = ltrim($sql);
+        if (substr($sql, 0, 3) === "\xEF\xBB\xBF") {
+            $sql = substr($sql, 3);
+            $changed = true;
+            continue;
+        }
+        if (substr($sql, 0, 2) === '/*') {
+            $pos = strpos($sql, '*/');
+            if ($pos !== false) {
+                $sql = substr($sql, $pos + 2);
+                $changed = true;
+                continue;
+            }
+        }
+        if (substr($sql, 0, 2) === '--' && (strlen($sql) == 2 || preg_match('/\s/', substr($sql, 2, 1)))) {
+            $pos = strpos($sql, "\n");
+            $sql = ($pos === false) ? '' : substr($sql, $pos + 1);
+            $changed = true;
+            continue;
+        }
+        if (substr($sql, 0, 1) === '#') {
+            $pos = strpos($sql, "\n");
+            $sql = ($pos === false) ? '' : substr($sql, $pos + 1);
+            $changed = true;
+            continue;
+        }
+    }
+    return ltrim($sql);
+}
+
+function mits_cdb_restore_sql_statement_keyword($sql)
+{
+    $sql = mits_cdb_restore_sql_uncommented_start($sql);
+    if (preg_match('/^([a-zA-Z_]+)/', $sql, $match)) {
+        return strtoupper($match[1]);
+    }
+    return '';
+}
+
+function mits_cdb_restore_sql_is_readonly($sql)
+{
+    return in_array(mits_cdb_restore_sql_statement_keyword($sql), array('SELECT', 'SHOW', 'DESCRIBE', 'DESC', 'EXPLAIN'));
+}
+
+function mits_cdb_restore_sql_uses_server_files($sql)
+{
+    $clean = mits_cdb_restore_sql_uncommented_start($sql);
+    return (bool)preg_match('/\bLOAD_FILE\s*\(|\bINTO\s+(OUTFILE|DUMPFILE)\b|^\s*LOAD\s+DATA\b/i', $clean);
+}
+
+function mits_cdb_restore_split_sql($sql)
+{
+    $sql = str_replace("\r\n", "\n", (string)$sql);
+    $sql = str_replace("\r", "\n", $sql);
+
+    $statements = array();
+    $buffer = '';
+    $length = strlen($sql);
+    $quote = '';
+    $in_line_comment = false;
+    $in_block_comment = false;
+
+    for ($i = 0; $i < $length; $i++) {
+        $char = $sql[$i];
+        $next = ($i + 1 < $length) ? $sql[$i + 1] : '';
+
+        if ($in_line_comment) {
+            $buffer .= $char;
+            if ($char === "\n") {
+                $in_line_comment = false;
+            }
+            continue;
+        }
+
+        if ($in_block_comment) {
+            $buffer .= $char;
+            if ($char === '*' && $next === '/') {
+                $buffer .= $next;
+                $i++;
+                $in_block_comment = false;
+            }
+            continue;
+        }
+
+        if ($quote != '') {
+            $buffer .= $char;
+            if ($char === '\\') {
+                if ($i + 1 < $length) {
+                    $buffer .= $sql[$i + 1];
+                    $i++;
+                }
+                continue;
+            }
+            if ($char === $quote) {
+                if (($quote === "'" || $quote === '"') && $next === $quote) {
+                    $buffer .= $next;
+                    $i++;
+                    continue;
+                }
+                $quote = '';
+            }
+            continue;
+        }
+
+        if ($char === '-' && $next === '-' && ($i + 2 >= $length || preg_match('/\s/', $sql[$i + 2]))) {
+            $buffer .= $char . $next;
+            $i++;
+            $in_line_comment = true;
+            continue;
+        }
+
+        if ($char === '#') {
+            $buffer .= $char;
+            $in_line_comment = true;
+            continue;
+        }
+
+        if ($char === '/' && $next === '*') {
+            $buffer .= $char . $next;
+            $i++;
+            $in_block_comment = true;
+            continue;
+        }
+
+        if ($char === "'" || $char === '"' || $char === '`') {
+            $buffer .= $char;
+            $quote = $char;
+            continue;
+        }
+
+        if ($char === ';') {
+            if (trim($buffer) != '') {
+                $statements[] = trim($buffer);
+            }
+            $buffer = '';
+            continue;
+        }
+
+        $buffer .= $char;
+    }
+
+    if (trim($buffer) != '') {
+        $statements[] = trim($buffer);
+    }
+
+    return $statements;
+}
+
+function mits_cdb_restore_sql_short_statement($sql)
+{
+    $sql = trim(preg_replace('/\s+/', ' ', (string)$sql));
+    if (strlen($sql) > 500) {
+        return substr($sql, 0, 500) . ' ...';
+    }
+    return $sql;
+}
+
+function mits_cdb_restore_sql_row_limit($value)
+{
+    $value = (int)$value;
+    $allowed = array(25, 50, 100, 250, 500);
+    return in_array($value, $allowed) ? $value : 100;
+}
+
+function mits_cdb_restore_run_sql_box($sql, $allow_write, $row_limit, &$messages, &$results)
+{
+    $sql = trim((string)$sql);
+    $row_limit = mits_cdb_restore_sql_row_limit($row_limit);
+    $results = array();
+
+    if ($sql == '') {
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_SQL_ERROR_EMPTY', 'Es wurde kein SQL-Code eingegeben.');
+        return false;
+    }
+
+    $link = mits_cdb_restore_db_link();
+    if ($link === false) {
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_SQL_ERROR_CONNECTION', 'Die Datenbankverbindung ist nicht verf&uuml;gbar.');
+        return false;
+    }
+
+    $statements = mits_cdb_restore_split_sql($sql);
+    if (empty($statements)) {
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_SQL_ERROR_EMPTY', 'Es wurde kein SQL-Code eingegeben.');
+        return false;
+    }
+
+    $counter = 0;
+    foreach ($statements as $statement) {
+        $counter++;
+        $entry = array(
+            'number' => $counter,
+            'statement' => mits_cdb_restore_sql_short_statement($statement),
+            'success' => false,
+            'message' => '',
+            'fields' => array(),
+            'rows' => array(),
+            'total_rows' => 0,
+            'displayed_rows' => 0,
+            'affected_rows' => null,
+            'insert_id' => null,
+        );
+
+        if (mits_cdb_restore_sql_uses_server_files($statement)) {
+            $entry['message'] = mits_cdb_restore_text('TEXT_MITS_CDB_SQL_ERROR_FILE_OPERATION', 'SQL-Anweisungen mit LOAD_FILE, LOAD DATA, INTO OUTFILE oder INTO DUMPFILE werden aus Sicherheitsgr&uuml;nden nicht ausgef&uuml;hrt.');
+            $results[] = $entry;
+            $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_SQL_ERROR_STATEMENT', 'SQL #%s fehlgeschlagen: %s'), $counter, $entry['message']);
+            return false;
+        }
+
+        if (!mits_cdb_restore_sql_is_readonly($statement) && !$allow_write) {
+            $entry['message'] = mits_cdb_restore_text('TEXT_MITS_CDB_SQL_ERROR_WRITE_CONFIRM', 'Schreibende SQL-Anweisungen wurden nicht ausgef&uuml;hrt, weil die Freigabe nicht aktiviert wurde.');
+            $results[] = $entry;
+            $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_SQL_ERROR_STATEMENT', 'SQL #%s fehlgeschlagen: %s'), $counter, $entry['message']);
+            return false;
+        }
+
+        try {
+            $query_result = mysqli_query($link, $statement);
+        } catch (Exception $e) {
+            $entry['message'] = $e->getMessage();
+            $results[] = $entry;
+            $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_SQL_ERROR_STATEMENT', 'SQL #%s fehlgeschlagen: %s'), $counter, $e->getMessage());
+            return false;
+        }
+
+        if ($query_result === false) {
+            $error = mysqli_error($link);
+            $entry['message'] = $error;
+            $results[] = $entry;
+            $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_SQL_ERROR_STATEMENT', 'SQL #%s fehlgeschlagen: %s'), $counter, $error);
+            return false;
+        }
+
+        $entry['success'] = true;
+        if (is_object($query_result)) {
+            while ($field = mysqli_fetch_field($query_result)) {
+                $entry['fields'][] = $field->name;
+            }
+            $entry['total_rows'] = mysqli_num_rows($query_result);
+            while ($row = mysqli_fetch_assoc($query_result)) {
+                if ($entry['displayed_rows'] < $row_limit) {
+                    $entry['rows'][] = $row;
+                    $entry['displayed_rows']++;
+                }
+            }
+            mysqli_free_result($query_result);
+            $entry['message'] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_SQL_SUCCESS_ROWS', '%s Datens&auml;tze gefunden, %s angezeigt.'), (int)$entry['total_rows'], (int)$entry['displayed_rows']);
+        } else {
+            $entry['affected_rows'] = mysqli_affected_rows($link);
+            $entry['insert_id'] = mysqli_insert_id($link);
+            $entry['message'] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_SQL_SUCCESS_AFFECTED', 'SQL-Anweisung ausgef&uuml;hrt. Betroffene Zeilen: %s.'), (int)$entry['affected_rows']);
+            if ((int)$entry['insert_id'] > 0) {
+                $entry['message'] .= ' ' . sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_SQL_SUCCESS_INSERT_ID', 'Insert-ID: %s.'), (int)$entry['insert_id']);
+            }
+        }
+
+        $results[] = $entry;
+    }
+
+    $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_SQL_SUCCESS_SUMMARY', '%s SQL-Anweisung(en) erfolgreich ausgef&uuml;hrt.'), count($statements));
+    return true;
+}
+
+function mits_cdb_restore_run_tables_dir($backup, $selected_table_files, $dirs, &$messages)
+{
+    $success = false;
+    $temp_files = array();
+
+    if (empty($selected_table_files)) {
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_ERROR_NO_TABLES', 'Es wurden keine Tabellen f&uuml;r die R&uuml;cksicherung ausgew&auml;hlt.');
+        return false;
+    }
+
+    foreach ($selected_table_files as $table_file) {
+        $import_file = $table_file['path'];
+        if (!empty($table_file['compressed'])) {
+            $temp_file = $dirs[$backup['dir_key']]['path'] . basename($table_file['filename'], '.gz') . '.restore_tmp_' . date('YmdHis') . '_' . mt_rand(1000, 9999) . '.sql';
+            if (!mits_cdb_restore_decompress_gz($table_file['path'], $temp_file, $messages)) {
+                foreach ($temp_files as $old_temp_file) {
+                    if (is_file($old_temp_file)) {
+                        @unlink($old_temp_file);
+                    }
+                }
+                return false;
+            }
+            $temp_files[] = $temp_file;
+            $import_file = $temp_file;
+        }
+
+        if (!mits_cdb_restore_import_sql_file($import_file, $messages)) {
+            $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_ERROR_IMPORT_TABLE', 'Der Import der Tabellendatei %s ist fehlgeschlagen.'), $table_file['filename']);
+            foreach ($temp_files as $old_temp_file) {
+                if (is_file($old_temp_file)) {
+                    @unlink($old_temp_file);
+                }
+            }
+            return false;
+        }
+        $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_TABLE_IMPORTED', 'Tabellendatei importiert: %s'), $table_file['filename']);
+        $success = true;
+    }
+
+    foreach ($temp_files as $old_temp_file) {
+        if (is_file($old_temp_file)) {
+            @unlink($old_temp_file);
+        }
+    }
+
+    return $success;
+}
+
+
 function mits_cdb_restore_lock_file($dirs)
 {
     if (defined('DIR_FS_CATALOG') && is_dir(DIR_FS_CATALOG . 'cache') && is_writable(DIR_FS_CATALOG . 'cache')) {
@@ -471,7 +1520,7 @@ function mits_cdb_restore_render_relogin_page($messages)
         . '.mits-relogin__body{padding:24px 32px}'
         . '.mits-relogin__note{margin:16px 0;padding:14px 16px;border:1px solid #d4e7e0;border-radius:14px;background:#f7fbfa;color:#536661}'
         . '.mits-relogin__log{white-space:pre-wrap;margin:16px 0;padding:14px 16px;border:1px solid var(--mits-ci-line);border-radius:14px;background:#fcfefd;max-height:300px;overflow:auto;color:#444}'
-        . '.mits-relogin__button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;border-radius:12px;border:1px solid var(--mits-ci-primary-dark);background:var(--mits-ci-primary-dark);color:#fff;text-decoration:none;font-weight:700}'
+        . '.mits-relogin__button,.mits-relogin__button:link,.mits-relogin__button:visited{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;border-radius:12px;border:1px solid var(--mits-ci-primary-dark);background:var(--mits-ci-primary-dark);color:#fff;text-decoration:none;font-weight:700}'
         . '.mits-relogin__button:hover{background:#467d70;border-color:#467d70}'
         . '</style>';
     echo '</head><body><div class="mits-relogin"><div class="mits-relogin__card">';
@@ -485,7 +1534,7 @@ function mits_cdb_restore_render_relogin_page($messages)
     exit;
 }
 
-function mits_cdb_restore_run($backup, $dirs, &$messages)
+function mits_cdb_restore_run($backup, $dirs, &$messages, $selected_table_files = array())
 {
     if (!mits_cdb_restore_exec_enabled()) {
         $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_EXEC_DISABLED;
@@ -499,36 +1548,52 @@ function mits_cdb_restore_run($backup, $dirs, &$messages)
     }
 
     $temp_file = '';
+    $temp_dir = '';
     $success = false;
 
     try {
         $safety_backup = mits_cdb_restore_create_safety_backup($dirs[$backup['dir_key']]['path'], $messages);
         if ($safety_backup !== false) {
-            $import_file = $backup['path'];
-
-            if ($backup['compressed']) {
-                $temp_file = $dirs[$backup['dir_key']]['path'] . basename($backup['filename'], '.gz') . '.restore_tmp_' . date('YmdHis') . '_' . mt_rand(1000, 9999) . '.sql';
-                if (mits_cdb_restore_decompress_gz($backup['path'], $temp_file, $messages)) {
-                    $messages[] = TEXT_MITS_CDB_RESTORE_GZ_UNPACKED;
-                    $import_file = $temp_file;
-                } else {
-                    $import_file = '';
-                }
-            }
-
-            if ($import_file != '') {
-                $command = 'mysql --binary-mode=1' . mits_cdb_restore_mysql_args() . ' < ' . escapeshellarg($import_file) . ' 2>&1';
-                $output = array();
-                $return = 1;
-                exec($command, $output, $return);
-
-                if ($return === 0) {
+            if (!empty($backup['tables_dir'])) {
+                $success = mits_cdb_restore_run_tables_dir($backup, $selected_table_files, $dirs, $messages);
+                if ($success) {
                     $messages[] = sprintf(TEXT_MITS_CDB_RESTORE_SUCCESS, $backup['filename']);
-                    $success = true;
-                } else {
-                    $messages[] = sprintf(TEXT_MITS_CDB_RESTORE_ERROR_IMPORT, $backup['filename']);
-                    if (!empty($output)) {
-                        $messages[] = implode("\n", $output);
+                }
+            } else {
+                $import_file = $backup['path'];
+
+                if (!empty($backup['archive'])) {
+                    $temp_dir = $dirs[$backup['dir_key']]['path'] . basename($backup['filename'], '.zip') . '.restore_tmp_' . date('YmdHis') . '_' . mt_rand(1000, 9999);
+                    $temp_file = $dirs[$backup['dir_key']]['path'] . basename($backup['filename'], '.zip') . '.restore_tmp_' . date('YmdHis') . '_' . mt_rand(1000, 9999) . '.sql';
+                    if (mits_cdb_restore_extract_zip_sql($backup['path'], $temp_dir, $temp_file, $messages)) {
+                        $import_file = $temp_file;
+                    } else {
+                        $import_file = '';
+                    }
+                } elseif ($backup['compressed']) {
+                    $temp_file = $dirs[$backup['dir_key']]['path'] . basename($backup['filename'], '.gz') . '.restore_tmp_' . date('YmdHis') . '_' . mt_rand(1000, 9999) . '.sql';
+                    if (mits_cdb_restore_decompress_gz($backup['path'], $temp_file, $messages)) {
+                        $messages[] = TEXT_MITS_CDB_RESTORE_GZ_UNPACKED;
+                        $import_file = $temp_file;
+                    } else {
+                        $import_file = '';
+                    }
+                }
+
+                if ($import_file != '') {
+                    $command = 'mysql --binary-mode=1' . mits_cdb_restore_mysql_args() . ' < ' . escapeshellarg($import_file) . ' 2>&1';
+                    $output = array();
+                    $return = 1;
+                    exec($command, $output, $return);
+
+                    if ($return === 0) {
+                        $messages[] = sprintf(TEXT_MITS_CDB_RESTORE_SUCCESS, $backup['filename']);
+                        $success = true;
+                    } else {
+                        $messages[] = sprintf(TEXT_MITS_CDB_RESTORE_ERROR_IMPORT, $backup['filename']);
+                        if (!empty($output)) {
+                            $messages[] = implode("\n", $output);
+                        }
                     }
                 }
             }
@@ -539,6 +1604,9 @@ function mits_cdb_restore_run($backup, $dirs, &$messages)
 
     if ($temp_file != '' && is_file($temp_file)) {
         @unlink($temp_file);
+    }
+    if ($temp_dir != '' && is_dir($temp_dir)) {
+        mits_cdb_restore_delete_directory($temp_dir);
     }
     if (is_file($lock_file)) {
         @unlink($lock_file);
@@ -554,12 +1622,62 @@ $selected_backup = false;
 $messages = array();
 $restore_done = false;
 $restore_success = false;
+$backup_done = false;
+$backup_success = false;
+$delete_done = false;
+$delete_success = false;
+$sql_done = false;
+$sql_success = false;
+$sql_results = array();
+$sql_code = '';
+$sql_row_limit = 100;
+$selected_restore_table_file = '';
+
+if ($action == 'download' && isset($_GET['backup'])) {
+    $selected_backup = mits_cdb_restore_resolve_backup($_GET['backup'], $dirs);
+
+    if (!mits_cdb_restore_check_token(isset($_GET['mits_restore_token']) ? $_GET['mits_restore_token'] : '')) {
+        $messageStack->add(TEXT_MITS_CDB_RESTORE_ERROR_TOKEN, 'error');
+        $action = '';
+    } elseif ($selected_backup === false) {
+        $messageStack->add(TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE, 'error');
+        $action = '';
+    } elseif (!mits_cdb_restore_send_download($selected_backup)) {
+        $messageStack->add(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_ERROR_DOWNLOAD', 'Die Backup-Datei konnte nicht heruntergeladen werden.'), 'error');
+        $action = '';
+    }
+}
+
+if ($action == 'download_table' && isset($_GET['backup']) && isset($_GET['file'])) {
+    $selected_backup = mits_cdb_restore_resolve_backup($_GET['backup'], $dirs);
+    $table_file = ($selected_backup !== false) ? mits_cdb_restore_resolve_table_download($selected_backup, $_GET['file']) : false;
+
+    if (!mits_cdb_restore_check_token(isset($_GET['mits_restore_token']) ? $_GET['mits_restore_token'] : '')) {
+        $messageStack->add(TEXT_MITS_CDB_RESTORE_ERROR_TOKEN, 'error');
+        $action = '';
+    } elseif ($selected_backup === false || $table_file === false) {
+        $messageStack->add(TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE, 'error');
+        $action = '';
+    } elseif (!mits_cdb_restore_send_table_download($table_file)) {
+        $messageStack->add(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_ERROR_DOWNLOAD', 'Die Backup-Datei konnte nicht heruntergeladen werden.'), 'error');
+        $action = '';
+    }
+}
 
 if ($action == 'confirm' && isset($_GET['backup'])) {
     $selected_backup = mits_cdb_restore_resolve_backup($_GET['backup'], $dirs);
     if ($selected_backup === false) {
         $messageStack->add(TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE, 'error');
         $action = '';
+    } elseif (isset($_GET['file']) && $_GET['file'] != '') {
+        $table_file = !empty($selected_backup['tables_dir']) ? mits_cdb_restore_resolve_table_download($selected_backup, $_GET['file']) : false;
+        if ($table_file === false) {
+            $messageStack->add(TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE, 'error');
+            $selected_backup = false;
+            $action = '';
+        } else {
+            $selected_restore_table_file = $table_file['filename'];
+        }
     }
 }
 
@@ -576,7 +1694,8 @@ if ($action == 'restore' && isset($_POST['backup'])) {
     } elseif (!isset($_POST['confirm_text']) || strtoupper(trim($_POST['confirm_text'])) !== 'RESTORE') {
         $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_CONFIRM;
     } else {
-        $restore_success = mits_cdb_restore_run($selected_backup, $dirs, $messages);
+        $selected_table_files = !empty($selected_backup['tables_dir']) ? mits_cdb_restore_selected_table_files($selected_backup, isset($_POST['restore_tables']) ? $_POST['restore_tables'] : array()) : array();
+        $restore_success = mits_cdb_restore_run($selected_backup, $dirs, $messages, $selected_table_files);
     }
 
     mits_cdb_restore_write_log($messages);
@@ -586,14 +1705,146 @@ if ($action == 'restore' && isset($_POST['backup'])) {
     mits_cdb_restore_rotate_token();
 }
 
+if ($action == 'backup') {
+    $backup_done = true;
+
+    if (!mits_cdb_restore_check_admin_csrf()) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TOKEN;
+    } elseif (!mits_cdb_restore_check_token(isset($_POST['mits_restore_token']) ? $_POST['mits_restore_token'] : '')) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TOKEN;
+    } elseif (!mits_cdb_restore_exec_enabled()) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_EXEC_DISABLED;
+    } else {
+        $selected_tables = mits_cdb_restore_selected_tables(isset($_POST['backup_tables']) ? $_POST['backup_tables'] : array());
+        $backup_mode = (isset($_POST['backup_mode']) && $_POST['backup_mode'] == 'tables') ? 'tables' : 'single';
+        $backup_target_dir = DIR_FS_DOCUMENT_ROOT . 'export/mits_cron_database_backups';
+        $backup_success = (mits_cdb_restore_create_manual_backup($backup_target_dir, $backup_mode, $selected_tables, $messages) !== false);
+    }
+
+    mits_cdb_restore_write_log($messages);
+    mits_cdb_restore_rotate_token();
+    $dirs = mits_cdb_restore_backup_dirs();
+    $backups = mits_cdb_restore_collect_backups($dirs);
+}
+
+if ($action == 'delete') {
+    $delete_done = true;
+    $selected_backup = mits_cdb_restore_resolve_backup(isset($_POST['backup']) ? $_POST['backup'] : '', $dirs);
+
+    if (!mits_cdb_restore_check_admin_csrf()) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TOKEN;
+    } elseif (!mits_cdb_restore_check_token(isset($_POST['mits_restore_token']) ? $_POST['mits_restore_token'] : '')) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TOKEN;
+    } elseif ($selected_backup === false) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE;
+    } else {
+        $delete_success = mits_cdb_restore_delete_backup_item($selected_backup, $messages);
+    }
+
+    mits_cdb_restore_write_log($messages);
+    mits_cdb_restore_rotate_token();
+    $dirs = mits_cdb_restore_backup_dirs();
+    $backups = mits_cdb_restore_collect_backups($dirs);
+}
+
+if ($action == 'delete_selected') {
+    $delete_done = true;
+    $selected_ids = array();
+    $raw_selected = (isset($_POST['backups']) && is_array($_POST['backups'])) ? $_POST['backups'] : array();
+
+    foreach ($raw_selected as $raw_id) {
+        $raw_id = (string)$raw_id;
+        if ($raw_id != '' && !in_array($raw_id, $selected_ids, true)) {
+            $selected_ids[] = $raw_id;
+        }
+    }
+
+    if (!mits_cdb_restore_check_admin_csrf()) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TOKEN;
+    } elseif (!mits_cdb_restore_check_token(isset($_POST['mits_restore_token']) ? $_POST['mits_restore_token'] : '')) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TOKEN;
+    } elseif (empty($selected_ids)) {
+        $messages[] = mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_NONE', 'Es wurden keine Sicherungen zum Loeschen ausgewaehlt.');
+    } else {
+        $deleted_count = 0;
+        $failed_count = 0;
+        foreach ($selected_ids as $selected_id) {
+            $selected_backup = mits_cdb_restore_resolve_backup($selected_id, $dirs);
+            if ($selected_backup === false) {
+                $failed_count++;
+                $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE;
+                continue;
+            }
+            if (mits_cdb_restore_delete_backup_item($selected_backup, $messages)) {
+                $deleted_count++;
+            } else {
+                $failed_count++;
+            }
+        }
+        if ($deleted_count > 0) {
+            $messages[] = sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_SUMMARY', '%s Sicherung(en) geloescht, %s fehlgeschlagen.'), $deleted_count, $failed_count);
+        }
+        $delete_success = ($deleted_count > 0 && $failed_count == 0);
+    }
+
+    mits_cdb_restore_write_log($messages);
+    mits_cdb_restore_rotate_token();
+    $dirs = mits_cdb_restore_backup_dirs();
+    $backups = mits_cdb_restore_collect_backups($dirs);
+}
+
+if ($action == 'delete_table') {
+    $delete_done = true;
+    $selected_backup = mits_cdb_restore_resolve_backup(isset($_POST['backup']) ? $_POST['backup'] : '', $dirs);
+
+    if (!mits_cdb_restore_check_admin_csrf()) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TOKEN;
+    } elseif (!mits_cdb_restore_check_token(isset($_POST['mits_restore_token']) ? $_POST['mits_restore_token'] : '')) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TOKEN;
+    } elseif ($selected_backup === false || empty($selected_backup['tables_dir'])) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE;
+    } else {
+        $delete_success = mits_cdb_restore_delete_table_file($selected_backup, isset($_POST['file']) ? $_POST['file'] : '', $messages);
+    }
+
+    mits_cdb_restore_write_log($messages);
+    mits_cdb_restore_rotate_token();
+    $dirs = mits_cdb_restore_backup_dirs();
+    $backups = mits_cdb_restore_collect_backups($dirs);
+}
+
+if ($action == 'sql') {
+    $sql_done = true;
+    $sql_code = isset($_POST['sql_code']) ? (string)$_POST['sql_code'] : '';
+    $sql_row_limit = mits_cdb_restore_sql_row_limit(isset($_POST['sql_row_limit']) ? $_POST['sql_row_limit'] : 100);
+    $allow_write = (isset($_POST['sql_confirm_write']) && $_POST['sql_confirm_write'] == '1');
+
+    if (!mits_cdb_restore_check_admin_csrf()) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TOKEN;
+    } elseif (!mits_cdb_restore_check_token(isset($_POST['mits_restore_token']) ? $_POST['mits_restore_token'] : '')) {
+        $messages[] = TEXT_MITS_CDB_RESTORE_ERROR_TOKEN;
+    } else {
+        $sql_success = mits_cdb_restore_run_sql_box($sql_code, $allow_write, $sql_row_limit, $messages, $sql_results);
+    }
+
+    mits_cdb_restore_write_log($messages);
+    mits_cdb_restore_rotate_token();
+}
+
+$available_tables = mits_cdb_restore_get_tables();
+
 $backup_count = count($backups);
 $total_backup_size = 0;
 $compressed_count = 0;
+$archive_count = 0;
 $latest_backup_text = '-';
 foreach ($backups as $backup_stat) {
     $total_backup_size += (int)$backup_stat['size'];
     if (!empty($backup_stat['compressed'])) {
         $compressed_count++;
+    }
+    if (!empty($backup_stat['archive'])) {
+        $archive_count++;
     }
 }
 if (!empty($backups)) {
@@ -631,6 +1882,8 @@ require(DIR_WS_INCLUDES . 'head.php');
 .mits-table-wrap{overflow:auto;border:1px solid var(--mits-ci-line);border-radius:16px;background:#fff}
 .mits-table{width:100%;border-collapse:separate;border-spacing:0;min-width:760px}
 .mits-table th,.mits-table td{padding:13px 14px;border-bottom:1px solid var(--mits-ci-line);text-align:left;vertical-align:middle}
+.mits-table-select{width:46px;text-align:center !important}
+.mits-table-select input{margin:0}
 .mits-table th{background:#f7fbfa;color:var(--mits-ci-muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .mits-table tbody tr:hover td{background:#fcfefd}
 .mits-table tbody tr:last-child td{border-bottom:0}
@@ -644,12 +1897,16 @@ require(DIR_WS_INCLUDES . 'head.php');
 .mits-badge--warning{background:var(--mits-ci-warning-bg);color:var(--mits-ci-warning-text)}
 .mits-button,.mits-button:link,.mits-button:visited{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 16px;border-radius:12px;border:1px solid var(--mits-ci-line-strong);background:#fff;color:var(--mits-ci-heading);font-weight:700;text-decoration:none;cursor:pointer;transition:all .15s ease;font-family:inherit;font-size:13px}
 .mits-button:hover,.mits-button:focus{border-color:var(--mits-ci-primary-dark);background:var(--mits-ci-primary-soft);color:var(--mits-ci-heading) !important;text-decoration:none !important}
-.mits-button--primary{background:var(--mits-ci-primary-dark);border-color:var(--mits-ci-primary-dark);color:#fff !important}
-.mits-button--primary:hover,.mits-button--primary:focus{background:#467d70;border-color:#467d70;color:#fff !important}
-.mits-button--soft{background:var(--mits-ci-primary-soft);border-color:var(--mits-ci-line);color:var(--mits-ci-heading) !important}
-.mits-button--soft:hover,.mits-button--soft:focus{background:#e5f4ef;border-color:var(--mits-ci-line-strong);color:var(--mits-ci-heading) !important}
-.mits-button--danger{background:var(--mits-ci-danger-bg);border-color:#f1cec9;color:var(--mits-ci-danger-text) !important}
-.mits-button--danger:hover,.mits-button--danger:focus{background:#f9d9d5;border-color:#e2aaa3;color:var(--mits-ci-danger-text) !important;text-decoration:none !important}
+.mits-button.mits-button--primary,.mits-button.mits-button--primary:link,.mits-button.mits-button--primary:visited{background:var(--mits-ci-primary-dark);border-color:var(--mits-ci-primary-dark);color:#fff !important}
+.mits-button.mits-button--primary:hover,.mits-button.mits-button--primary:focus{background:#467d70;border-color:#467d70;color:#fff !important}
+.mits-button.mits-button--soft,.mits-button.mits-button--soft:link,.mits-button.mits-button--soft:visited{background:var(--mits-ci-primary-soft);border-color:var(--mits-ci-line);color:var(--mits-ci-heading) !important}
+.mits-button.mits-button--soft:hover,.mits-button.mits-button--soft:focus{background:#e5f4ef;border-color:var(--mits-ci-line-strong);color:var(--mits-ci-heading) !important}
+.mits-button.mits-button--danger,.mits-button.mits-button--danger:link,.mits-button.mits-button--danger:visited{background:var(--mits-ci-danger-bg);border-color:#f1cec9;color:var(--mits-ci-danger-text) !important}
+.mits-button.mits-button--danger:hover,.mits-button.mits-button--danger:focus{background:#f9d9d5;border-color:#e2aaa3;color:var(--mits-ci-danger-text) !important;text-decoration:none !important}
+.mits-button--icon{width:40px;min-width:40px;padding:0;font-size:17px;line-height:1}
+.mits-button--icon-sm{width:32px;min-width:32px;min-height:30px;padding:0;font-size:15px;line-height:1}
+.mits-inline-form{display:inline-flex;margin:0}
+.mits-bulk-actions{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-top:12px;flex-wrap:wrap}
 .mits-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
 .mits-subtle{color:var(--mits-ci-muted);font-size:12px;line-height:1.5}
 .mits-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px}
@@ -663,6 +1920,43 @@ require(DIR_WS_INCLUDES . 'head.php');
 .mits-steps li{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--mits-ci-line);border-radius:14px;background:#fff}
 .mits-steps span{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;background:var(--mits-ci-primary-soft);color:var(--mits-ci-heading);font-weight:800;flex:0 0 auto}
 .mits-empty{padding:24px;border:1px dashed var(--mits-ci-line-strong);border-radius:16px;background:#fcfefd;text-align:center;color:var(--mits-ci-muted)}
+.mits-check-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 8px;flex-wrap:wrap}
+.mits-check-list{max-height:320px;overflow:auto;border:1px solid var(--mits-ci-line);border-radius:14px;background:#fff;margin:12px 0;padding:8px}
+.mits-check-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px;color:var(--mits-ci-heading);word-break:break-all}
+.mits-check-row:hover{background:var(--mits-ci-primary-soft-2)}
+.mits-check-row input{margin:0;flex:0 0 auto}
+.mits-table-files{border:1px solid var(--mits-ci-line);border-radius:14px;background:#fcfefd;overflow:hidden}
+.mits-table-files summary{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;font-weight:700;color:var(--mits-ci-heading);background:var(--mits-ci-primary-soft-2);list-style:none}
+.mits-table-files summary::-webkit-details-marker{display:none}
+.mits-table-files summary:before{content:'+';display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:var(--mits-ci-primary-soft);border:1px solid var(--mits-ci-line);font-weight:800;color:var(--mits-ci-heading);flex:0 0 auto}
+.mits-table-files[open] summary:before{content:'-'}
+.mits-table-files__body{padding:10px 12px 12px}
+.mits-table-files__row{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid var(--mits-ci-line);word-break:break-all}
+.mits-table-files__row:last-child{border-bottom:0}
+.mits-table-files__name{font-weight:700;color:var(--mits-ci-heading)}
+.mits-table-files__meta{margin-left:auto;color:var(--mits-ci-muted);font-size:12px;white-space:nowrap}
+.mits-table-files__download{margin-left:8px;min-height:30px;padding:0 10px;white-space:nowrap}
+.mits-table-files__actions{display:flex;gap:6px;align-items:center;margin-left:8px;flex:0 0 auto}
+.mits-field{margin:0 0 12px}
+.mits-field label{display:block;margin:0 0 6px;font-weight:700;color:var(--mits-ci-heading)}
+.mits-field select{width:100%;padding:10px 12px;border:1px solid var(--mits-ci-line-strong);border-radius:12px;background:#fff;color:var(--mits-ci-ink)}
+.mits-sql-card{overflow:hidden}
+.mits-sql-card>summary{display:block;cursor:pointer;list-style:none;position:relative;padding-right:52px}
+.mits-sql-card>summary::-webkit-details-marker{display:none}
+.mits-sql-card>summary:after{content:'+';position:absolute;right:18px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:999px;background:var(--mits-ci-primary-soft);border:1px solid var(--mits-ci-line);font-weight:800;color:var(--mits-ci-heading)}
+.mits-sql-card[open]>summary:after{content:'-'}
+.mits-sql-textarea{width:100%;min-height:180px;resize:vertical;padding:12px 13px;border:1px solid var(--mits-ci-line-strong);border-radius:12px;background:#fff;color:var(--mits-ci-ink);font-family:Consolas,Monaco,monospace !important;font-size:12px;line-height:1.45}
+.mits-sql-textarea:focus{border-color:var(--mits-ci-primary-dark);box-shadow:0 0 0 3px rgba(102,170,153,.16);outline:none}
+.mits-sql-option{display:flex;align-items:flex-start;gap:8px;margin:10px 0;color:var(--mits-ci-heading);line-height:1.45}
+.mits-sql-option input{margin-top:2px;flex:0 0 auto}
+.mits-sql-result{border:1px solid var(--mits-ci-line);border-radius:16px;background:#fcfefd;margin:14px 0 0;overflow:hidden}
+.mits-sql-result__head{padding:12px 14px;border-bottom:1px solid var(--mits-ci-line);background:var(--mits-ci-primary-soft-2)}
+.mits-sql-result__title{font-weight:700;color:var(--mits-ci-heading);margin:0 0 5px}
+.mits-sql-result__statement{white-space:pre-wrap;font-family:Consolas,Monaco,monospace;font-size:12px;line-height:1.45;color:#445;margin:8px 0 0;padding:10px;border:1px solid var(--mits-ci-line);border-radius:10px;background:#fff;max-height:140px;overflow:auto}
+.mits-sql-result__body{padding:12px 14px;overflow:auto}
+.mits-sql-result-table{width:100%;border-collapse:collapse;min-width:520px;background:#fff}
+.mits-sql-result-table th,.mits-sql-result-table td{padding:8px 10px;border:1px solid var(--mits-ci-line);text-align:left;vertical-align:top;font-size:12px;max-width:340px;word-break:break-word}
+.mits-sql-result-table th{background:#f7fbfa;color:var(--mits-ci-muted);font-weight:700}
 @media (max-width:1100px){.mits-admin__stats{grid-template-columns:repeat(2,minmax(170px,1fr))}.mits-admin__layout{grid-template-columns:1fr}.mits-admin__hero{display:block}.mits-admin__hero-actions{justify-content:flex-start;margin-top:14px}}
 @media (max-width:640px){.mits-admin{padding:12px}.mits-admin__stats,.mits-detail-grid{grid-template-columns:1fr}.mits-card__body,.mits-card__header,.mits-admin__hero{padding:16px}.mits-table{min-width:680px}}
 </style>
@@ -675,7 +1969,7 @@ require(DIR_WS_INCLUDES . 'head.php');
 <div class="mits-admin">
   <div class="mits-admin__hero">
     <div>
-      <h1><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_PAGE_TITLE', 'MITS Cron Database Backups - Datenbankr&uuml;cksicherung'); ?></h1>
+      <h1><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_PAGE_TITLE', 'MITS Cron Database Backups - Datenbank-Werkzeuge'); ?></h1>
       <p><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_HERO_TEXT', TEXT_MITS_CDB_RESTORE_INTRO); ?></p>
     </div>
     <div class="mits-admin__hero-actions">
@@ -707,7 +2001,99 @@ require(DIR_WS_INCLUDES . 'head.php');
     </div>
   </div>
 
-  <?php if ($restore_done) { ?>
+  <?php if ($sql_done) { ?>
+    <div class="mits-card" style="margin-bottom:18px;">
+      <div class="mits-card__header">
+        <h2 class="mits-card__title"><?php echo $sql_success ? mits_cdb_restore_text('TEXT_MITS_CDB_SQL_RESULT_SUCCESS', 'SQL ausgef&uuml;hrt') : mits_cdb_restore_text('TEXT_MITS_CDB_SQL_RESULT_ERROR', 'SQL fehlgeschlagen'); ?></h2>
+        <p class="mits-card__subtitle"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_SQL_RESULT_SUBTITLE', 'Das Ergebnis der SQL-Ausf&uuml;hrung wurde protokolliert.'); ?></p>
+      </div>
+      <div class="mits-card__body">
+        <div class="mits-alert <?php echo ($sql_success ? 'mits-alert--success' : 'mits-alert--danger'); ?>">
+          <strong><?php echo $sql_success ? mits_cdb_restore_text('TEXT_MITS_CDB_SQL_RESULT_SUCCESS', 'SQL ausgef&uuml;hrt') : mits_cdb_restore_text('TEXT_MITS_CDB_SQL_RESULT_ERROR', 'SQL fehlgeschlagen'); ?></strong>
+          <?php if (!empty($messages)) { ?>
+            <div class="mits-log"><?php echo mits_cdb_restore_plain_html(implode("\n", $messages)); ?></div>
+          <?php } ?>
+        </div>
+
+        <?php if (!empty($sql_results)) { ?>
+          <?php foreach ($sql_results as $sql_result) { ?>
+            <div class="mits-sql-result">
+              <div class="mits-sql-result__head">
+                <div class="mits-sql-result__title">
+                  <?php echo sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_SQL_RESULT_STATEMENT_TITLE', 'SQL #%s'), (int)$sql_result['number']); ?>
+                  <span class="mits-badge <?php echo !empty($sql_result['success']) ? 'mits-badge--success' : 'mits-badge--danger'; ?>"><?php echo !empty($sql_result['success']) ? mits_cdb_restore_text('TEXT_MITS_CDB_SQL_STATUS_OK', 'OK') : mits_cdb_restore_text('TEXT_MITS_CDB_SQL_STATUS_ERROR', 'Fehler'); ?></span>
+                </div>
+                <div class="mits-subtle"><?php echo mits_cdb_restore_plain_html($sql_result['message']); ?></div>
+                <div class="mits-sql-result__statement"><?php echo mits_cdb_restore_plain_html($sql_result['statement']); ?></div>
+              </div>
+              <?php if (!empty($sql_result['fields'])) { ?>
+                <div class="mits-sql-result__body">
+                  <?php if (!empty($sql_result['rows'])) { ?>
+                    <table class="mits-sql-result-table">
+                      <thead>
+                        <tr>
+                          <?php foreach ($sql_result['fields'] as $field) { ?>
+                            <th><?php echo mits_cdb_restore_html($field); ?></th>
+                          <?php } ?>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php foreach ($sql_result['rows'] as $row) { ?>
+                          <tr>
+                            <?php foreach ($sql_result['fields'] as $field) { ?>
+                              <td><?php echo mits_cdb_restore_plain_html(isset($row[$field]) ? $row[$field] : ''); ?></td>
+                            <?php } ?>
+                          </tr>
+                        <?php } ?>
+                      </tbody>
+                    </table>
+                  <?php } else { ?>
+                    <div class="mits-empty"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_SQL_RESULT_EMPTY', 'Die Abfrage lieferte keine Datens&auml;tze.'); ?></div>
+                  <?php } ?>
+                </div>
+              <?php } ?>
+            </div>
+          <?php } ?>
+        <?php } ?>
+      </div>
+    </div>
+  <?php } ?>
+
+  <?php if ($delete_done) { ?>
+    <div class="mits-card" style="margin-bottom:18px;">
+      <div class="mits-card__header">
+        <h2 class="mits-card__title"><?php echo $delete_success ? mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_RESULT_SUCCESS', 'Backup gel&ouml;scht') : mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_RESULT_ERROR', 'L&ouml;schen fehlgeschlagen'); ?></h2>
+        <p class="mits-card__subtitle"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_RESULT_SUBTITLE', 'Das Ergebnis der L&ouml;schaktion wurde protokolliert.'); ?></p>
+      </div>
+      <div class="mits-card__body">
+        <div class="mits-alert <?php echo ($delete_success ? 'mits-alert--success' : 'mits-alert--danger'); ?>">
+          <strong><?php echo $delete_success ? mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_RESULT_SUCCESS', 'Backup gel&ouml;scht') : mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_RESULT_ERROR', 'L&ouml;schen fehlgeschlagen'); ?></strong>
+          <?php if (!empty($messages)) { ?>
+            <div class="mits-log"><?php echo mits_cdb_restore_plain_html(implode("\n", $messages)); ?></div>
+          <?php } ?>
+        </div>
+      </div>
+    </div>
+  <?php } ?>
+
+  <?php if ($backup_done) { ?>
+    <div class="mits-card">
+      <div class="mits-card__header">
+        <h2 class="mits-card__title"><?php echo $backup_success ? mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_RESULT_SUCCESS', 'Backup erstellt') : mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_RESULT_ERROR', 'Backup fehlgeschlagen'); ?></h2>
+        <p class="mits-card__subtitle"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_RESULT_SUBTITLE', 'Das Ergebnis der manuellen Sicherung wurde protokolliert.'); ?></p>
+      </div>
+      <div class="mits-card__body">
+        <div class="mits-alert <?php echo ($backup_success ? 'mits-alert--success' : 'mits-alert--danger'); ?>">
+          <strong><?php echo $backup_success ? mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_RESULT_SUCCESS', 'Backup erstellt') : mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_RESULT_ERROR', 'Backup fehlgeschlagen'); ?></strong>
+          <?php if (!empty($messages)) { ?>
+            <div class="mits-log"><?php echo mits_cdb_restore_plain_html(implode("
+", $messages)); ?></div>
+          <?php } ?>
+        </div>
+        <a class="mits-button mits-button--primary" href="<?php echo xtc_href_link('mits_cron_database_restore.php'); ?>"><?php echo BUTTON_BACK; ?></a>
+      </div>
+    </div>
+  <?php } elseif ($restore_done) { ?>
     <div class="mits-card">
       <div class="mits-card__header">
         <h2 class="mits-card__title"><?php echo ($restore_success ? TEXT_MITS_CDB_RESTORE_RESULT_SUCCESS : TEXT_MITS_CDB_RESTORE_RESULT_ERROR); ?></h2>
@@ -759,6 +2145,22 @@ require(DIR_WS_INCLUDES . 'head.php');
             <?php echo mits_cdb_restore_csrf_hidden_fields(); ?>
             <?php echo xtc_draw_hidden_field('action', 'restore'); ?>
             <?php echo xtc_draw_hidden_field('backup', $selected_backup['id']); ?>
+            <?php if (!empty($selected_backup['tables_dir'])) { $restore_table_files = mits_cdb_restore_collect_table_files($selected_backup['path']); ?>
+              <div class="mits-alert mits-alert--success">
+                <strong><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_TABLE_SELECTION_TITLE', 'Tabellen f&uuml;r die R&uuml;cksicherung ausw&auml;hlen'); ?></strong>
+                <?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_TABLE_SELECTION_INFO', 'Bei einem Tabellen-Backup k&ouml;nnen einzelne Tabellendateien gezielt ausgew&auml;hlt oder heruntergeladen werden.'); ?>
+                <?php if ($selected_restore_table_file != '') { ?><br /><?php echo sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_TABLE_PRESELECTED_INFO', 'Vorausgew&auml;hlt ist nur die Tabellendatei: %s'), mits_cdb_restore_html(mits_cdb_restore_table_file_label($selected_restore_table_file))); ?><?php } ?>
+              </div>
+              <div class="mits-check-list">
+                <?php foreach ($restore_table_files as $table_file) { ?>
+                  <label class="mits-check-row">
+                    <input type="checkbox" name="restore_tables[]" value="<?php echo mits_cdb_restore_html($table_file['filename']); ?>"<?php echo ($selected_restore_table_file == '' || $selected_restore_table_file == $table_file['filename']) ? ' checked="checked"' : ''; ?> />
+                    <span><?php echo mits_cdb_restore_html(mits_cdb_restore_table_file_label($table_file['filename'])); ?> <span class="mits-subtle">(<?php echo mits_cdb_restore_format_filesize($table_file['size']); ?>)</span></span>
+                    <a class="mits-button mits-button--soft" style="margin-left:auto;min-height:30px;padding:0 10px;" href="<?php echo xtc_href_link('mits_cron_database_restore.php', 'action=download_table&backup=' . rawurlencode($selected_backup['id']) . '&file=' . rawurlencode($table_file['filename']) . '&mits_restore_token=' . rawurlencode(mits_cdb_restore_ensure_token())); ?>"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DOWNLOAD', 'Download'); ?></a>
+                  </label>
+                <?php } ?>
+              </div>
+            <?php } ?>
             <p class="mits-subtle"><?php echo TEXT_MITS_CDB_RESTORE_CONFIRM_INPUT; ?></p>
             <p><input class="mits-confirm-input" type="text" name="confirm_text" value="" autocomplete="off" /></p>
             <div class="mits-actions" style="justify-content:flex-start;">
@@ -777,7 +2179,7 @@ require(DIR_WS_INCLUDES . 'head.php');
         <div class="mits-card__body">
           <ol class="mits-steps">
             <li><span>1</span><div><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_STEP_BACKUP', 'Aktuelle Datenbank wird als Sicherheitsbackup gesichert.'); ?></div></li>
-            <li><span>2</span><div><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_STEP_UNPACK', 'SQL.GZ-Dateien werden bei Bedarf tempor&auml;r entpackt.'); ?></div></li>
+            <li><span>2</span><div><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_STEP_UNPACK', 'SQL.GZ-Dateien und Tabellen-Backups werden bei Bedarf tempor&auml;r entpackt.'); ?></div></li>
             <li><span>3</span><div><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_STEP_IMPORT', 'Der Import erfolgt per mysql-Client des Servers.'); ?></div></li>
             <li><span>4</span><div><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_STEP_RELOGIN', 'Nach erfolgreicher R&uuml;cksicherung wird die Admin-Session beendet.'); ?></div></li>
           </ol>
@@ -803,6 +2205,7 @@ require(DIR_WS_INCLUDES . 'head.php');
               <table class="mits-table">
                 <thead>
                   <tr>
+                    <th class="mits-table-select"><input type="checkbox" id="mits-cdb-select-all" title="<?php echo mits_cdb_restore_html(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_SELECT_ALL', 'Alle ausw&auml;hlen / abw&auml;hlen')); ?>" aria-label="<?php echo mits_cdb_restore_html(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_SELECT_ALL', 'Alle ausw&auml;hlen / abw&auml;hlen')); ?>" /></th>
                     <th><?php echo TEXT_MITS_CDB_RESTORE_FILE; ?></th>
                     <th><?php echo TEXT_MITS_CDB_RESTORE_DIRECTORY; ?></th>
                     <th><?php echo TEXT_MITS_CDB_RESTORE_SIZE; ?></th>
@@ -814,34 +2217,159 @@ require(DIR_WS_INCLUDES . 'head.php');
                 <tbody>
                   <?php foreach ($backups as $backup) { ?>
                     <tr>
+                      <td class="mits-table-select"><input type="checkbox" class="mits-backup-select" form="mits_cdb_bulk_delete_form" name="backups[]" value="<?php echo mits_cdb_restore_html($backup['id']); ?>" aria-label="<?php echo mits_cdb_restore_html(sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_SELECT_BACKUP', 'Sicherung ausw&auml;hlen: %s'), $backup['filename'])); ?>" /></td>
                       <td>
                         <div class="mits-file">
-                          <span class="mits-file__icon">SQL</span>
+                          <span class="mits-file__icon"><?php echo (!empty($backup['tables_dir']) ? 'TAB' : (!empty($backup['archive']) ? 'ZIP' : 'SQL')); ?></span>
                           <div>
                             <span class="mits-file__name"><?php echo mits_cdb_restore_html($backup['filename']); ?></span>
-                            <span class="mits-file__meta"><?php echo mits_cdb_restore_html($backup['id']); ?></span>
+                            <span class="mits-file__meta"><?php echo !empty($backup['tables_dir']) ? sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_TABLE_COUNT', '%s Tabellen'), (int)$backup['table_count']) : mits_cdb_restore_html($backup['id']); ?></span>
                           </div>
                         </div>
                       </td>
                       <td><?php echo mits_cdb_restore_html($backup['directory']); ?></td>
                       <td><?php echo mits_cdb_restore_format_filesize($backup['size']); ?></td>
                       <td><?php echo date('d.m.Y H:i:s', $backup['mtime']); ?></td>
-                      <td><span class="mits-badge <?php echo ($backup['compressed'] ? 'mits-badge--success' : ''); ?>"><?php echo ($backup['compressed'] ? 'SQL.GZ' : 'SQL'); ?></span></td>
+                      <td><span class="mits-badge <?php echo (!empty($backup['compressed']) || !empty($backup['archive']) || !empty($backup['tables_dir']) ? 'mits-badge--success' : ''); ?>"><?php echo (!empty($backup['tables_dir']) ? sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_TYPE_TABLES', 'Tabellen (%s)'), (int)$backup['table_count']) : (!empty($backup['archive']) ? 'ZIP' : ($backup['compressed'] ? 'SQL.GZ' : 'SQL'))); ?></span></td>
                       <td>
                         <div class="mits-actions">
+                          <?php if (empty($backup['tables_dir'])) { ?>
+                            <a class="mits-button mits-button--soft" href="<?php echo xtc_href_link('mits_cron_database_restore.php', 'action=download&backup=' . rawurlencode($backup['id']) . '&mits_restore_token=' . rawurlencode(mits_cdb_restore_ensure_token())); ?>"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DOWNLOAD', 'Download'); ?></a>
+                          <?php } ?>
                           <a class="mits-button mits-button--danger" href="<?php echo xtc_href_link('mits_cron_database_restore.php', 'action=confirm&backup=' . rawurlencode($backup['id'])); ?>"><?php echo BUTTON_RESTORE; ?></a>
+                          <?php echo xtc_draw_form('mits_cdb_delete_' . md5($backup['id']), 'mits_cron_database_restore.php', '', 'post', 'class="mits-inline-form" onsubmit="return confirm(this.getAttribute(\'data-confirm\').replace(/\\n/g, String.fromCharCode(10)));" data-confirm="' . mits_cdb_restore_html(sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_CONFIRM', 'Dieses Backup wirklich l&ouml;schen?\n\n%s'), $backup['filename'])) . '"'); ?>
+                            <?php echo mits_cdb_restore_csrf_hidden_fields(); ?>
+                            <?php echo xtc_draw_hidden_field('action', 'delete'); ?>
+                            <?php echo xtc_draw_hidden_field('backup', $backup['id']); ?>
+                            <button type="submit" class="mits-button mits-button--danger mits-button--icon" title="<?php echo mits_cdb_restore_html(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE', 'L&ouml;schen')); ?>" aria-label="<?php echo mits_cdb_restore_html(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE', 'L&ouml;schen')); ?>"><span aria-hidden="true">&#128465;</span></button>
+                          </form>
                         </div>
                       </td>
                     </tr>
+                    <?php if (!empty($backup['tables_dir'])) { $list_table_files = mits_cdb_restore_collect_table_files($backup['path']); ?>
+                      <tr>
+                        <td colspan="7">
+                          <details class="mits-table-files">
+                            <summary>
+                              <?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_TOGGLE', 'Einzelne Tabellendateien anzeigen'); ?>
+                              <span class="mits-subtle"><?php echo sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_COUNT', '%s Dateien'), count($list_table_files)); ?></span>
+                            </summary>
+                            <div class="mits-table-files__body">
+                              <div class="mits-subtle" style="margin:0 0 8px;"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_INFO', 'Jede Tabellendatei geh&ouml;rt zu diesem Tabellen-Backup und kann separat heruntergeladen, wiederhergestellt oder gel&ouml;scht werden.'); ?></div>
+                              <?php foreach ($list_table_files as $table_file) { ?>
+                                <div class="mits-table-files__row">
+                                  <span class="mits-table-files__name"><?php echo mits_cdb_restore_html(mits_cdb_restore_table_file_label($table_file['filename'])); ?></span>
+                                  <span class="mits-subtle"><?php echo mits_cdb_restore_html($table_file['filename']); ?></span>
+                                  <span class="mits-table-files__meta"><?php echo mits_cdb_restore_format_filesize($table_file['size']); ?></span>
+                                  <span class="mits-table-files__actions">
+                                    <a class="mits-button mits-button--danger mits-table-files__restore" href="<?php echo xtc_href_link('mits_cron_database_restore.php', 'action=confirm&backup=' . rawurlencode($backup['id']) . '&file=' . rawurlencode($table_file['filename'])); ?>" title="<?php echo mits_cdb_restore_html(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_TABLE_FILE_RESTORE', 'Diese Tabellendatei wiederherstellen')); ?>"><?php echo BUTTON_RESTORE; ?></a>
+                                    <a class="mits-button mits-button--soft mits-table-files__download" href="<?php echo xtc_href_link('mits_cron_database_restore.php', 'action=download_table&backup=' . rawurlencode($backup['id']) . '&file=' . rawurlencode($table_file['filename']) . '&mits_restore_token=' . rawurlencode(mits_cdb_restore_ensure_token())); ?>"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DOWNLOAD', 'Download'); ?></a>
+                                    <?php echo xtc_draw_form('mits_cdb_delete_table_' . md5($backup['id'] . '|' . $table_file['filename']), 'mits_cron_database_restore.php', '', 'post', 'class="mits-inline-form" onsubmit="return confirm(this.getAttribute(\'data-confirm\').replace(/\\n/g, String.fromCharCode(10)));" data-confirm="' . mits_cdb_restore_html(sprintf(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_CONFIRM', 'Diese Tabellendatei wirklich l&ouml;schen?\n\n%s'), $table_file['filename'])) . '"'); ?>
+                                      <?php echo mits_cdb_restore_csrf_hidden_fields(); ?>
+                                      <?php echo xtc_draw_hidden_field('action', 'delete_table'); ?>
+                                      <?php echo xtc_draw_hidden_field('backup', $backup['id']); ?>
+                                      <?php echo xtc_draw_hidden_field('file', $table_file['filename']); ?>
+                                      <button type="submit" class="mits-button mits-button--danger mits-button--icon-sm" title="<?php echo mits_cdb_restore_html(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE', 'L&ouml;schen')); ?>" aria-label="<?php echo mits_cdb_restore_html(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE', 'L&ouml;schen')); ?>"><span aria-hidden="true">&#128465;</span></button>
+                                    </form>
+                                  </span>
+                                </div>
+                              <?php } ?>
+                            </div>
+                          </details>
+                        </td>
+                      </tr>
+                    <?php } ?>
                   <?php } ?>
                 </tbody>
               </table>
+            </div>
+            <form id="mits_cdb_bulk_delete_form" action="<?php echo xtc_href_link('mits_cron_database_restore.php'); ?>" method="post">
+              <?php echo mits_cdb_restore_csrf_hidden_fields(); ?>
+              <?php echo xtc_draw_hidden_field('action', 'delete_selected'); ?>
+            </form>
+            <div class="mits-bulk-actions">
+              <button type="submit" form="mits_cdb_bulk_delete_form" class="mits-button mits-button--danger" onclick="return confirm('<?php echo mits_cdb_restore_html(mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_CONFIRM', 'Ausgew&auml;hlte Sicherungen wirklich endg&uuml;ltig l&ouml;schen?')); ?>');"><span aria-hidden="true">&#128465;</span><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED', 'Ausgew&auml;hlte l&ouml;schen'); ?></button>
+              <span class="mits-subtle"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_INFO', 'Ausgew&auml;hlte Tabellen-Backups werden komplett inklusive aller enthaltenen Tabellendateien gel&ouml;scht.'); ?></span>
             </div>
           <?php } ?>
         </div>
       </div>
 
       <div class="mits-admin__stack">
+        <div class="mits-card">
+          <div class="mits-card__header">
+            <h2 class="mits-card__title"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_MANUAL_TITLE', 'Manuelle Sicherung'); ?></h2>
+            <p class="mits-card__subtitle"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_MANUAL_SUBTITLE', 'Tabellen ausw&auml;hlen und direkt ein Backup erstellen.'); ?></p>
+          </div>
+          <div class="mits-card__body">
+            <?php echo xtc_draw_form('mits_cdb_backup', 'mits_cron_database_restore.php', '', 'post'); ?>
+              <?php echo mits_cdb_restore_csrf_hidden_fields(); ?>
+              <?php echo xtc_draw_hidden_field('action', 'backup'); ?>
+              <div class="mits-field">
+                <label for="mits-backup-mode"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_MODE', 'Backup-Modus'); ?></label>
+                <select id="mits-backup-mode" name="backup_mode">
+                  <option value="single"<?php echo (!defined('MODULE_MITS_CRON_DATABASE_BACKUPS_BACKUP_MODE') || MODULE_MITS_CRON_DATABASE_BACKUPS_BACKUP_MODE != 'tables') ? ' selected="selected"' : ''; ?>><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_MODE_SINGLE', 'Eine SQL-/SQL.GZ-Datei'); ?></option>
+                  <option value="tables"<?php echo (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_BACKUP_MODE') && MODULE_MITS_CRON_DATABASE_BACKUPS_BACKUP_MODE == 'tables') ? ' selected="selected"' : ''; ?>><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_MODE_TABLES', 'Ordner mit einer SQL.GZ pro Tabelle'); ?></option>
+                </select>
+              </div>
+              <div class="mits-subtle"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_TABLES_INFO', 'Alle Tabellen sind vorausgew&auml;hlt. Entfernen Sie Haken, wenn nur bestimmte Tabellen gesichert werden sollen.'); ?></div>
+              <div class="mits-check-toolbar">
+                <label class="mits-check-row" for="mits-cdb-backup-tables-select-all">
+                  <input type="checkbox" id="mits-cdb-backup-tables-select-all" checked="checked" />
+                  <span><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_TABLES_SELECT_ALL', 'Alle Tabellen ausw&auml;hlen / abw&auml;hlen'); ?></span>
+                </label>
+              </div>
+              <div class="mits-check-list">
+                <?php foreach ($available_tables as $table_name) { ?>
+                  <label class="mits-check-row">
+                    <input type="checkbox" class="mits-backup-table-select" name="backup_tables[]" value="<?php echo mits_cdb_restore_html($table_name); ?>" checked="checked" />
+                    <span><?php echo mits_cdb_restore_html($table_name); ?></span>
+                  </label>
+                <?php } ?>
+              </div>
+              <div class="mits-actions" style="justify-content:flex-start;">
+                <button type="submit" class="mits-button mits-button--primary"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_BACKUP_START', 'Backup erstellen'); ?></button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <details class="mits-card mits-sql-card"<?php echo $sql_done ? ' open="open"' : ''; ?>>
+          <summary class="mits-card__header">
+            <h2 class="mits-card__title"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_SQL_TITLE', 'SQL direkt ausf&uuml;hren'); ?></h2>
+            <p class="mits-card__subtitle"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_SQL_SUBTITLE', 'Query-Box f&uuml;r einzelne SQL-Anweisungen.'); ?></p>
+          </summary>
+          <div class="mits-card__body">
+            <div class="mits-alert mits-alert--warning">
+              <strong><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_SQL_WARNING_TITLE', 'Direkter Datenbankzugriff'); ?></strong>
+              <?php echo mits_cdb_restore_text('TEXT_MITS_CDB_SQL_WARNING', 'SQL-Code wird direkt auf der aktuellen Shopdatenbank ausgef&uuml;hrt. Erstellen Sie vorher ein Backup. Schreibende Anweisungen m&uuml;ssen unten zus&auml;tzlich erlaubt werden.'); ?>
+            </div>
+            <?php echo xtc_draw_form('mits_cdb_sql', 'mits_cron_database_restore.php', '', 'post'); ?>
+              <?php echo mits_cdb_restore_csrf_hidden_fields(); ?>
+              <?php echo xtc_draw_hidden_field('action', 'sql'); ?>
+              <div class="mits-field">
+                <label for="mits-sql-code"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_SQL_CODE', 'SQL-Code'); ?></label>
+                <textarea id="mits-sql-code" name="sql_code" class="mits-sql-textarea" spellcheck="false" placeholder="SELECT * FROM configuration LIMIT 10;"><?php echo mits_cdb_restore_plain_html($sql_code); ?></textarea>
+              </div>
+              <div class="mits-field">
+                <label for="mits-sql-row-limit"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_SQL_ROW_LIMIT', 'Maximal angezeigte Ergebniszeilen'); ?></label>
+                <select id="mits-sql-row-limit" name="sql_row_limit">
+                  <?php foreach (array(25, 50, 100, 250, 500) as $limit_value) { ?>
+                    <option value="<?php echo (int)$limit_value; ?>"<?php echo ((int)$sql_row_limit === (int)$limit_value) ? ' selected="selected"' : ''; ?>><?php echo (int)$limit_value; ?></option>
+                  <?php } ?>
+                </select>
+              </div>
+              <label class="mits-sql-option">
+                <input type="checkbox" name="sql_confirm_write" value="1" />
+                <span><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_SQL_CONFIRM_WRITE', 'Schreibende SQL-Anweisungen wie INSERT, UPDATE, DELETE, ALTER oder DROP erlauben.'); ?></span>
+              </label>
+              <div class="mits-actions" style="justify-content:flex-start;">
+                <button type="submit" class="mits-button mits-button--primary"><?php echo mits_cdb_restore_text('TEXT_MITS_CDB_SQL_RUN', 'SQL ausf&uuml;hren'); ?></button>
+              </div>
+            </form>
+          </div>
+        </details>
+
         <div class="mits-card">
           <div class="mits-card__header">
             <h2 class="mits-card__title"><?php echo TEXT_MITS_CDB_RESTORE_WARNING_TITLE; ?></h2>
@@ -857,6 +2385,44 @@ require(DIR_WS_INCLUDES . 'head.php');
     </div>
   <?php } ?>
 </div>
+<script>
+(function() {
+  function bindSelectAll(masterId, itemSelector) {
+    var master = document.getElementById(masterId);
+    var boxes = document.querySelectorAll(itemSelector);
+    if (!master) {
+      return;
+    }
+    if (!boxes.length) {
+      master.disabled = true;
+      return;
+    }
+    function updateMaster() {
+      var checked = 0;
+      for (var i = 0; i < boxes.length; i++) {
+        if (boxes[i].checked) {
+          checked++;
+        }
+      }
+      master.checked = checked === boxes.length;
+      master.indeterminate = checked > 0 && checked < boxes.length;
+    }
+    master.addEventListener('change', function() {
+      for (var i = 0; i < boxes.length; i++) {
+        boxes[i].checked = master.checked;
+      }
+      updateMaster();
+    });
+    for (var j = 0; j < boxes.length; j++) {
+      boxes[j].addEventListener('change', updateMaster);
+    }
+    updateMaster();
+  }
+
+  bindSelectAll('mits-cdb-select-all', '.mits-backup-select');
+  bindSelectAll('mits-cdb-backup-tables-select-all', '.mits-backup-table-select');
+})();
+</script>
 
 <!-- footer //--> 
 <?php require(DIR_WS_INCLUDES . 'footer.php'); ?>
