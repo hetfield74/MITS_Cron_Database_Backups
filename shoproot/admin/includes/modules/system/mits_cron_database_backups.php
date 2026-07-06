@@ -36,7 +36,7 @@ class mits_cron_database_backups
     {
         $this->code = 'mits_cron_database_backups';
         $this->name = 'MODULE_' . strtoupper($this->code);
-        $this->version = '1.4.9';
+        $this->version = '1.5.8';
         $this->sort_order = defined($this->name . '_SORT_ORDER') ? constant($this->name . '_SORT_ORDER') : 0;
         $this->enabled = defined($this->name . '_STATUS') && (constant($this->name . '_STATUS') == 'true');
         $this->default_columns = 'configuration_key, configuration_value, configuration_group_id, sort_order, set_function';
@@ -111,6 +111,7 @@ class mits_cron_database_backups
     public function install(): void
     {
         $this->dbChanges();
+				xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_HASH', '" . md5(time() . xtc_rand(0, 99999)) . "', 6, 2, NULL, now())");
     }
 
     /**
@@ -159,6 +160,17 @@ class mits_cron_database_backups
 
         if (!defined($this->name . '_EXTENDED_INSERT')) {
             xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_EXTENDED_INSERT', 'true', 6, 5, 'xtc_cfg_select_option(array(\'true\', \'false\'), ', now())");
+        }
+
+        if (!defined($this->name . '_SQL_COMMENTS')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_SQL_COMMENTS', 'true', 6, 6, 'xtc_cfg_select_option(array(\'true\', \'false\'), ', now())");
+        }
+
+        if (!defined($this->name . '_BACKUP_MODE')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_BACKUP_MODE', 'single', 6, 7, 'xtc_cfg_select_option(array(\'single\', \'tables\'), ', now())");
+        } else {
+            xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET set_function = 'xtc_cfg_select_option(array(\'single\', \'tables\'), ' WHERE configuration_key = '" . $this->name . "_BACKUP_MODE'");
+            xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET configuration_value = 'tables' WHERE configuration_key = '" . $this->name . "_BACKUP_MODE' AND configuration_value = 'tables_zip'");
         }
 
         if (!defined($this->name . '_SENDMAIL')) {
@@ -333,6 +345,8 @@ class mits_cron_database_backups
           $this->name . '_GZIP',
           $this->name . '_COMPLETE_INSERT',
           $this->name . '_EXTENDED_INSERT',
+          $this->name . '_SQL_COMMENTS',
+          $this->name . '_BACKUP_MODE',
           $this->name . '_SENDMAIL',
           $this->name . '_MAILADDRESS',
           $this->name . '_SENDFTP',

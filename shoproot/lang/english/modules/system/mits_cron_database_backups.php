@@ -23,7 +23,7 @@ $mits_hash = defined($module_key . '_HASH') ? constant($module_key . '_HASH') : 
 if (defined($module_key . '_STATUS') && constant($module_key . '_STATUS') == 'true') {
   $mits_db_backup_cronjoburl = '<hr /><h3>CronJob URL:</h3><textarea style="width: 100%;height:auto;">' . xtc_catalog_href_link('callback/mits_cron_database_backups/mits_cron_database_backups.php', 'pw=' . $mits_hash, 'SSL') . '</textarea><p>Use this URL in your cron jobs.</p><p>The parameter <strong style="color:#900">pw</strong> must be replaced by the configured hash value. If you change the hash value, you also have to update the URL in your cron job.</p>';
   $mits_db_backup_button = '<hr /><div style="text-align:center;padding:10px;"><a href="'.xtc_catalog_href_link('callback/mits_cron_database_backups/mits_cron_database_backups.php', '', 'SSL').'?pw='.$mits_hash.'" class="button" onclick="this.blur();"><strong>Start database backup</strong></a></div>';
-  $mits_db_restore_button = '<div style="text-align:center;padding:10px;"><a href="'.xtc_href_link('mits_cron_database_restore.php', '', 'NONSSL').'" class="button" onclick="this.blur();"><strong>Open database restore</strong></a></div><hr />';
+  $mits_db_restore_button = '<div style="text-align:center;padding:10px;"><a href="'.xtc_href_link('mits_cron_database_restore.php', '', 'NONSSL').'" class="button" onclick="this.blur();"><strong>Open database tools</strong></a></div><hr />';
 } else {
   $mits_db_backup_cronjoburl = '';
   $mits_db_backup_button = '';
@@ -50,7 +50,9 @@ $lang_array = array(
       <p>This module lets you automatically back up your shop database on a regular schedule or start a backup manually when needed.</p>
       <ul>
         <li>Create regular automatic database backups of the shop</li>
-        <li>Fast restore of existing SQL/SQL.GZ backups in the admin area using the mysql client</li>
+
+        <li>Optionally create a table backup folder with one SQL.GZ file per table</li>
+       <li>Fast restore of existing SQL/SQL.GZ backups in the admin area using the mysql client</li>
         <li>Optional modified Scheduled Task: calls the existing callback URL by cURL</li>
         <li>Optionally send database backups by email</li>
         <li>Optionally upload database backups by FTP to another backup server</li>
@@ -84,6 +86,12 @@ $lang_array = array(
 
   'MODULE_' . $modulname . '_EXTENDED_INSERT_TITLE' => 'Option --extended-insert',
   'MODULE_' . $modulname . '_EXTENDED_INSERT_DESC'  => 'Extended insert combines several data rows into one INSERT query. This significantly reduces the file size for large SQL dumps, increases INSERT speed during import and is generally recommended.',
+
+  'MODULE_' . $modulname . '_SQL_COMMENTS_TITLE' => 'Comments in SQL dump',
+  'MODULE_' . $modulname . '_SQL_COMMENTS_DESC'  => 'Add comments to the SQL dump? In addition to the mysqldump comments, a short MITS header comment is added. Comments are ignored during restore.',
+
+  'MODULE_' . $modulname . '_BACKUP_MODE_TITLE' => 'Backup mode',
+  'MODULE_' . $modulname . '_BACKUP_MODE_DESC'  => '<strong>single</strong> creates one SQL/SQL.GZ file for the complete database. <strong>tables</strong> creates a dedicated backup folder with one SQL.GZ file per table.',
 
   'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Send database backup by email',
   'MODULE_' . $modulname . '_SENDMAIL_DESC'  => 'Should the database backup be sent by email?',
