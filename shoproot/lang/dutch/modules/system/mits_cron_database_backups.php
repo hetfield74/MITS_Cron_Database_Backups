@@ -37,7 +37,7 @@ $mits_no_curl = (!$mits_curl_enabled) ? '<div style="padding:6px;background:#ff0
 $mits_no_exec = (!$mits_exec_enabled) ? '<div style="padding:6px;background:#ff0;font-size:14px;border:1px solid #900;color:#900;"><strong>Uw server beschikt niet over de vereiste rechten. De functie <i>exec()</i> is uitgeschakeld. Neem contact op met uw provider om deze te activeren of kies een provider met ingeschakelde exec-functie, bijv. <a href="https://all-inkl.com/?partner=293050">all-inkl.com</a>.</strong></div>' : '';
 
 $lang_array = array(
-  'MODULE_' . $modulname . '_TITLE'       => 'MITS Cron Database Backups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>',
+  'MODULE_' . $modulname . '_TITLE'       => 'MITS Cron Database Backups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a style="color:#6a9;font-size:unset;font-weight:bold;" href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>',
   'MODULE_' . $modulname . '_DESCRIPTION' => '
    <div>
     <a href="https://www.merz-it-service.de/" target="_blank">
@@ -52,6 +52,7 @@ $lang_array = array(
         <li>Automatisch regelmatige databaseback-ups van de shop laten maken</li>
 
         <li>Optioneel een tabel-back-up als map met &eacute;&eacute;n SQL.GZ-bestand per tabel maken</li>
+        <li>Database-engine van geselecteerde tabellen tussen MyISAM en InnoDB converteren</li>
        <li>Snel herstel van bestaande SQL-/SQL.GZ-back-ups in de admin via de mysql-client</li>
         <li>Optionele modified Scheduled Task: roept de bestaande callback-URL via cURL aan</li>
         <li>Databaseback-up optioneel per e-mail ontvangen</li>
@@ -92,6 +93,9 @@ $lang_array = array(
 
   'MODULE_' . $modulname . '_BACKUP_MODE_TITLE' => 'Back-upmodus',
   'MODULE_' . $modulname . '_BACKUP_MODE_DESC'  => '<strong>single</strong> maakt &eacute;&eacute;n SQL-/SQL.GZ-bestand voor de volledige database. <strong>tables</strong> maakt een eigen back-upmap met &eacute;&eacute;n SQL.GZ-bestand per tabel.',
+
+  'MODULE_' . $modulname . '_WRITE_LOG_TITLE' => 'Logbestanden schrijven',
+  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Moeten acties van de MITS database-tools in de logmap van de shop worden vastgelegd? Het logbestand heet <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
 
   'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Databaseback-up per e-mail verzenden',
   'MODULE_' . $modulname . '_SENDMAIL_DESC'  => 'Moet de databaseback-up per e-mail worden verzonden?',

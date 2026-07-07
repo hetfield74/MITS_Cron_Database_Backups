@@ -37,7 +37,7 @@ $mits_no_curl = (!$mits_curl_enabled) ? '<div style="padding:6px;background:#ff0
 $mits_no_exec = (!$mits_exec_enabled) ? '<div style="padding:6px;background:#ff0;font-size:14px;border:1px solid #900;color:#900;"><strong>Ihr Server verf&uuml;gt nicht &uuml;ber die notwendigen Berechtigungen. Die Funktion <i>exec()</i> ist deaktiviert. Bitte kontaktieren Sie ihren Provider zur Aktivierung oder wechseln sie zu einem Provider mit aktivierter exec-Funktion, z.B. <a href="https://all-inkl.com/?partner=293050">all-inkl.com</a></strong></div>' : '';
 
 $lang_array = array(
-  'MODULE_' . $modulname . '_TITLE'       => 'MITS Cron Database Backups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>',
+  'MODULE_' . $modulname . '_TITLE'       => 'MITS Cron Database Backups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a style="color:#6a9;font-size:unset;font-weight:bold;" href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>',
   'MODULE_' . $modulname . '_DESCRIPTION' => '
    <div>
     <a href="https://www.merz-it-service.de/" target="_blank">
@@ -53,6 +53,7 @@ $lang_array = array(
         <li>Schnelle R&uuml;cksicherung vorhandener SQL-/SQL.GZ-Backups im Adminbereich per mysql-Client</li>
         <li>Optionaler modified Scheduled Task: ruft die bestehende Callback-URL per cURL auf</li>
         <li>Optional Tabellen-Backup als Ordner mit einer SQL.GZ-Datei pro Tabelle erstellen</li>
+        <li>Datenbank-Engine einzelner Tabellen zwischen MyISAM und InnoDB konvertieren</li>
         <li>Datenbanksicherung optional per E-Mail erhalten</li>
         <li>Datenbanksicherung optional per FTP auf einen anderen Backup-Server hochladen</li>
         <li>Optional alte Datenbanksicherungen automatisch nach x Tagen l&ouml;schen</li>
@@ -91,6 +92,9 @@ $lang_array = array(
 
   'MODULE_' . $modulname . '_BACKUP_MODE_TITLE' => 'Backup-Modus',
   'MODULE_' . $modulname . '_BACKUP_MODE_DESC'  => '<strong>single</strong> erstellt eine SQL-/SQL.GZ-Datei f&uuml;r die komplette Datenbank. <strong>tables</strong> erstellt einen eigenen Backupordner mit einer SQL.GZ-Datei pro Tabelle.',
+
+  'MODULE_' . $modulname . '_WRITE_LOG_TITLE' => 'Logdateien schreiben',
+  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Sollen Aktionen der MITS Datenbank-Werkzeuge im Shop-Logordner protokolliert werden? Die Logdatei hei&szlig;t <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
 
   'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Datenbanksicherung per E-Mail versenden',
   'MODULE_' . $modulname . '_SENDMAIL_DESC'  => 'Soll die Datenbanksicherung per E-Mail versendet werden?',

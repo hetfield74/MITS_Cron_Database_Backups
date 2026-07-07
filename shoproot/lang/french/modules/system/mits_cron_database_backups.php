@@ -37,7 +37,7 @@ $mits_no_curl = (!$mits_curl_enabled) ? '<div style="padding:6px;background:#ff0
 $mits_no_exec = (!$mits_exec_enabled) ? '<div style="padding:6px;background:#ff0;font-size:14px;border:1px solid #900;color:#900;"><strong>Votre serveur ne fournit pas les autorisations n&eacute;cessaires. La fonction <i>exec()</i> est d&eacute;sactiv&eacute;e. Veuillez contacter votre h&eacute;bergeur pour l&rsquo;activer ou choisir un h&eacute;bergeur avec exec activ&eacute;, par exemple <a href="https://all-inkl.com/?partner=293050">all-inkl.com</a>.</strong></div>' : '';
 
 $lang_array = array(
-  'MODULE_' . $modulname . '_TITLE'       => 'MITS Cron Database Backups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>',
+  'MODULE_' . $modulname . '_TITLE'       => 'MITS Cron Database Backups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a style="color:#6a9;font-size:unset;font-weight:bold;" href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>',
   'MODULE_' . $modulname . '_DESCRIPTION' => '
    <div>
     <a href="https://www.merz-it-service.de/" target="_blank">
@@ -52,6 +52,7 @@ $lang_array = array(
         <li>Cr&eacute;er automatiquement des sauvegardes r&eacute;guli&egrave;res de la base de donn&eacute;es de la boutique</li>
 
         <li>Cr&eacute;er en option un dossier de sauvegarde par tables avec un fichier SQL.GZ par table</li>
+        <li>Convertir le moteur de base de donn&eacute;es de certaines tables entre MyISAM et InnoDB</li>
        <li>Restauration rapide des sauvegardes SQL/SQL.GZ existantes dans l&rsquo;administration via le client mysql</li>
         <li>T&acirc;che planifi&eacute;e modified optionnelle : appelle l&rsquo;URL de callback existante via cURL</li>
         <li>Recevoir la sauvegarde de la base de donn&eacute;es par e-mail en option</li>
@@ -92,6 +93,9 @@ $lang_array = array(
 
   'MODULE_' . $modulname . '_BACKUP_MODE_TITLE' => 'Mode de sauvegarde',
   'MODULE_' . $modulname . '_BACKUP_MODE_DESC'  => '<strong>single</strong> cr&eacute;e un fichier SQL/SQL.GZ pour toute la base de donn&eacute;es. <strong>tables</strong> cr&eacute;e un dossier de sauvegarde s&eacute;par&eacute; avec un fichier SQL.GZ par table.',
+
+  'MODULE_' . $modulname . '_WRITE_LOG_TITLE' => '&Eacute;crire des fichiers journaux',
+  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Les actions des outils de base de donn&eacute;es MITS doivent-elles &ecirc;tre enregistr&eacute;es dans le dossier log de la boutique ? Le fichier journal s\'appelle <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
 
   'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Envoyer la sauvegarde par e-mail',
   'MODULE_' . $modulname . '_SENDMAIL_DESC'  => 'La sauvegarde de la base de donn&eacute;es doit-elle &ecirc;tre envoy&eacute;e par e-mail ?',

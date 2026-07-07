@@ -37,7 +37,7 @@ $mits_no_curl = (!$mits_curl_enabled) ? '<div style="padding:6px;background:#ff0
 $mits_no_exec = (!$mits_exec_enabled) ? '<div style="padding:6px;background:#ff0;font-size:14px;border:1px solid #900;color:#900;"><strong>Your server does not provide the required permissions. The function <i>exec()</i> is disabled. Please contact your hosting provider to enable it or switch to a provider with exec enabled, e.g. <a href="https://all-inkl.com/?partner=293050">all-inkl.com</a>.</strong></div>' : '';
 
 $lang_array = array(
-  'MODULE_' . $modulname . '_TITLE'       => 'MITS Cron Database Backups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>',
+  'MODULE_' . $modulname . '_TITLE'       => 'MITS Cron Database Backups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a style="color:#6a9;font-size:unset;font-weight:bold;" href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>',
   'MODULE_' . $modulname . '_DESCRIPTION' => '
    <div>
     <a href="https://www.merz-it-service.de/" target="_blank">
@@ -52,6 +52,7 @@ $lang_array = array(
         <li>Create regular automatic database backups of the shop</li>
 
         <li>Optionally create a table backup folder with one SQL.GZ file per table</li>
+        <li>Convert the database engine of selected tables between MyISAM and InnoDB</li>
        <li>Fast restore of existing SQL/SQL.GZ backups in the admin area using the mysql client</li>
         <li>Optional modified Scheduled Task: calls the existing callback URL by cURL</li>
         <li>Optionally send database backups by email</li>
@@ -92,6 +93,9 @@ $lang_array = array(
 
   'MODULE_' . $modulname . '_BACKUP_MODE_TITLE' => 'Backup mode',
   'MODULE_' . $modulname . '_BACKUP_MODE_DESC'  => '<strong>single</strong> creates one SQL/SQL.GZ file for the complete database. <strong>tables</strong> creates a dedicated backup folder with one SQL.GZ file per table.',
+
+  'MODULE_' . $modulname . '_WRITE_LOG_TITLE' => 'Write log files',
+  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Should actions from the MITS database tools be written to the shop log directory? The log file is named <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
 
   'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Send database backup by email',
   'MODULE_' . $modulname . '_SENDMAIL_DESC'  => 'Should the database backup be sent by email?',

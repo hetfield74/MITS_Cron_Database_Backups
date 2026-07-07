@@ -37,7 +37,7 @@ $mits_no_curl = (!$mits_curl_enabled) ? '<div style="padding:6px;background:#ff0
 $mits_no_exec = (!$mits_exec_enabled) ? '<div style="padding:6px;background:#ff0;font-size:14px;border:1px solid #900;color:#900;"><strong>Su servidor no proporciona los permisos necesarios. La funci&oacute;n <i>exec()</i> est&aacute; desactivada. Contacte con su proveedor para activarla o cambie a un proveedor con exec activo, por ejemplo <a href="https://all-inkl.com/?partner=293050">all-inkl.com</a>.</strong></div>' : '';
 
 $lang_array = array(
-  'MODULE_' . $modulname . '_TITLE'       => 'MITS Cron Database Backups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>',
+  'MODULE_' . $modulname . '_TITLE'       => 'MITS Cron Database Backups <span style="white-space:nowrap;">&copy; by <span style="padding:2px;background:#ffe;color:#6a9;font-weight:bold;">Hetfield (<a style="color:#6a9;font-size:unset;font-weight:bold;" href="https://www.merz-it-service.de/" target="_blank">MerZ IT-SerVice</a>)</span></span>',
   'MODULE_' . $modulname . '_DESCRIPTION' => '
    <div>
     <a href="https://www.merz-it-service.de/" target="_blank">
@@ -52,6 +52,7 @@ $lang_array = array(
         <li>Crear autom&aacute;ticamente copias de seguridad peri&oacute;dicas de la base de datos de la tienda</li>
 
         <li>Crear opcionalmente una carpeta de copia por tablas con un archivo SQL.GZ por tabla</li>
+        <li>Convertir el motor de base de datos de tablas seleccionadas entre MyISAM e InnoDB</li>
        <li>Restauraci&oacute;n r&aacute;pida de copias SQL/SQL.GZ existentes en el &aacute;rea de administraci&oacute;n mediante el cliente mysql</li>
         <li>Tarea programada modified opcional: llama a la URL de callback existente mediante cURL</li>
         <li>Enviar opcionalmente la copia de seguridad por correo electr&oacute;nico</li>
@@ -92,6 +93,9 @@ $lang_array = array(
 
   'MODULE_' . $modulname . '_BACKUP_MODE_TITLE' => 'Modo de copia',
   'MODULE_' . $modulname . '_BACKUP_MODE_DESC'  => '<strong>single</strong> crea un archivo SQL/SQL.GZ para toda la base de datos. <strong>tables</strong> crea una carpeta de copia propia con un archivo SQL.GZ por tabla.',
+
+  'MODULE_' . $modulname . '_WRITE_LOG_TITLE' => 'Escribir archivos de log',
+  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => '&iquest;Deben registrarse las acciones de las herramientas de base de datos MITS en la carpeta de logs de la tienda? El archivo se llama <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
 
   'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Enviar copia de seguridad por correo electr&oacute;nico',
   'MODULE_' . $modulname . '_SENDMAIL_DESC'  => '&iquest;Debe enviarse la copia de seguridad de la base de datos por correo electr&oacute;nico?',

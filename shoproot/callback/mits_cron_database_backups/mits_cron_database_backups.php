@@ -56,6 +56,85 @@ function mits_cdb_backup_safe_name($value)
     return preg_replace('/[^A-Za-z0-9_.-]/', '_', (string)$value);
 }
 
+
+function mits_cdb_backup_ensure_directory_protection($dir)
+{
+    $dir = rtrim((string)$dir, '/\\') . DIRECTORY_SEPARATOR;
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0777, true);
+    }
+
+    if (!is_dir($dir) || !is_writable($dir)) {
+        return false;
+    }
+
+    $marker = 'MITS Cron Database Backups Protection';
+    $htaccess_file = $dir . '.htaccess';
+    $htaccess_block = "
+# BEGIN " . $marker . "
+"
+      . "Options -Indexes
+"
+      . "<IfModule mod_authz_core.c>
+"
+      . "  Require all denied
+"
+      . "</IfModule>
+"
+      . "<IfModule !mod_authz_core.c>
+"
+      . "  Order deny,allow
+"
+      . "  Deny from all
+"
+      . "</IfModule>
+"
+      . "# END " . $marker . "
+";
+
+    $current_htaccess = is_file($htaccess_file) ? (string)@file_get_contents($htaccess_file) : '';
+    if ($current_htaccess === '' || strpos($current_htaccess, $marker) === false) {
+        @file_put_contents($htaccess_file, rtrim($current_htaccess) . $htaccess_block, LOCK_EX);
+        @chmod($htaccess_file, 0644);
+    }
+
+    $index_file = $dir . 'index.html';
+    if (!is_file($index_file)) {
+        @file_put_contents($index_file, '', LOCK_EX);
+        @chmod($index_file, 0644);
+    }
+
+    $web_config_file = $dir . 'web.config';
+    if (!is_file($web_config_file)) {
+        $web_config = '<?xml version="1.0" encoding="UTF-8"?>' . "
+"
+          . '<configuration>' . "
+"
+          . '  <system.webServer>' . "
+"
+          . '    <security>' . "
+"
+          . '      <authorization>' . "
+"
+          . '        <clear />' . "
+"
+          . '        <add accessType="Deny" users="*" />' . "
+"
+          . '      </authorization>' . "
+"
+          . '    </security>' . "
+"
+          . '  </system.webServer>' . "
+"
+          . '</configuration>' . "
+";
+        @file_put_contents($web_config_file, $web_config, LOCK_EX);
+        @chmod($web_config_file, 0644);
+    }
+
+    return is_file($htaccess_file) && is_file($index_file);
+}
+
 function mits_cdb_backup_comments_option()
 {
     return mits_cdb_backup_bool('MODULE_MITS_CRON_DATABASE_BACKUPS_SQL_COMMENTS', 'true') ? ' --comments' : ' --skip-comments';
@@ -259,6 +338,8 @@ function mits_cdb_backup_create_tables_directory($target_dir, $backup_base, $sel
     $backup_dir = rtrim($target_dir, '/\\') . DIRECTORY_SEPARATOR . $backup_base . '_tables';
     mits_cdb_backup_delete_directory($backup_dir);
     @mkdir($backup_dir, 0777, true);
+    mits_cdb_backup_ensure_directory_protection($target_dir);
+    mits_cdb_backup_ensure_directory_protection($backup_dir);
 
     if (!is_dir($backup_dir) || !is_writable($backup_dir)) {
         $dump_output = array('Der Backup-Ordner f&uuml;r die Tabellen konnte nicht erstellt werden.');
@@ -361,6 +442,7 @@ if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS') && MODULE_MITS_CRON_DATA
         $backup_success = false;
 
         if (is_dir('export/mits_cron_database_backups')) {
+            mits_cdb_backup_ensure_directory_protection(DIR_FS_DOCUMENT_ROOT . 'export/mits_cron_database_backups');
             $dir = 'export/mits_cron_database_backups/';
         } else {
             $dir = (defined('DIR_ADMIN') ? DIR_ADMIN : 'admin/') . 'backups/';

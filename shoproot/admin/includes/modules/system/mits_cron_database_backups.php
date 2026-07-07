@@ -36,7 +36,7 @@ class mits_cron_database_backups
     {
         $this->code = 'mits_cron_database_backups';
         $this->name = 'MODULE_' . strtoupper($this->code);
-        $this->version = '1.5.8';
+        $this->version = '1.6.6';
         $this->sort_order = defined($this->name . '_SORT_ORDER') ? constant($this->name . '_SORT_ORDER') : 0;
         $this->enabled = defined($this->name . '_STATUS') && (constant($this->name . '_STATUS') == 'true');
         $this->default_columns = 'configuration_key, configuration_value, configuration_group_id, sort_order, set_function';
@@ -173,6 +173,10 @@ class mits_cron_database_backups
             xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET configuration_value = 'tables' WHERE configuration_key = '" . $this->name . "_BACKUP_MODE' AND configuration_value = 'tables_zip'");
         }
 
+        if (!defined($this->name . '_WRITE_LOG')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_WRITE_LOG', 'true', 6, 8, 'xtc_cfg_select_option(array(\'true\', \'false\'), ', now())");
+        }
+
         if (!defined($this->name . '_SENDMAIL')) {
             xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_SENDMAIL', 'false', 6, 6, 'xtc_cfg_select_option(array(\'true\', \'false\'), ', now())");
         }
@@ -217,6 +221,7 @@ class mits_cron_database_backups
             xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_DELETELOGS', 'true', 6, 16, 'xtc_cfg_select_option(array(\'true\', \'false\'), ', now())");
         }
 
+        $this->ensureBackupDirectoryProtection();
         $this->installScheduledTask(1);
         $this->installAdminRestoreAccess();
     }
@@ -347,6 +352,7 @@ class mits_cron_database_backups
           $this->name . '_EXTENDED_INSERT',
           $this->name . '_SQL_COMMENTS',
           $this->name . '_BACKUP_MODE',
+          $this->name . '_WRITE_LOG',
           $this->name . '_SENDMAIL',
           $this->name . '_MAILADDRESS',
           $this->name . '_SENDFTP',
@@ -360,6 +366,86 @@ class mits_cron_database_backups
           $this->name . '_DELETELOGS',
         );
     }
+
+    /**
+     * @return void
+     */
+    private function ensureBackupDirectoryProtection(): void
+    {
+        $dir = rtrim(DIR_FS_DOCUMENT_ROOT . 'export/mits_cron_database_backups', '/\\') . DIRECTORY_SEPARATOR;
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+
+        if (!is_dir($dir) || !is_writable($dir)) {
+            return;
+        }
+
+        $marker = 'MITS Cron Database Backups Protection';
+        $htaccess_file = $dir . '.htaccess';
+        $htaccess_block = "
+# BEGIN " . $marker . "
+"
+          . "Options -Indexes
+"
+          . "<IfModule mod_authz_core.c>
+"
+          . "  Require all denied
+"
+          . "</IfModule>
+"
+          . "<IfModule !mod_authz_core.c>
+"
+          . "  Order deny,allow
+"
+          . "  Deny from all
+"
+          . "</IfModule>
+"
+          . "# END " . $marker . "
+";
+
+        $current_htaccess = is_file($htaccess_file) ? (string)@file_get_contents($htaccess_file) : '';
+        if ($current_htaccess === '' || strpos($current_htaccess, $marker) === false) {
+            @file_put_contents($htaccess_file, rtrim($current_htaccess) . $htaccess_block, LOCK_EX);
+            @chmod($htaccess_file, 0644);
+        }
+
+        $index_file = $dir . 'index.html';
+        if (!is_file($index_file)) {
+            @file_put_contents($index_file, '', LOCK_EX);
+            @chmod($index_file, 0644);
+        }
+
+        $web_config_file = $dir . 'web.config';
+        if (!is_file($web_config_file)) {
+            $web_config = '<?xml version="1.0" encoding="UTF-8"?>' . "
+"
+              . '<configuration>' . "
+"
+              . '  <system.webServer>' . "
+"
+              . '    <security>' . "
+"
+              . '      <authorization>' . "
+"
+              . '        <clear />' . "
+"
+              . '        <add accessType="Deny" users="*" />' . "
+"
+              . '      </authorization>' . "
+"
+              . '    </security>' . "
+"
+              . '  </system.webServer>' . "
+"
+              . '</configuration>' . "
+";
+            @file_put_contents($web_config_file, $web_config, LOCK_EX);
+            @chmod($web_config_file, 0644);
+        }
+    }
+
 
     /**
      * @param string $table
