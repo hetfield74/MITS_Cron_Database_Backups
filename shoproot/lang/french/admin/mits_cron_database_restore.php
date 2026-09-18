@@ -2,186 +2,206 @@
 /**
  * --------------------------------------------------------------
  * File: mits_cron_database_restore.php
- * Date: 12.06.2026
+ * Created by PhpStorm
+ * Date: 07.07.2026
+ * Time: 07:44
+ *
+ * Author: Hetfield
+ * Copyright: (c) 2026 - MerZ IT-SerVice
+ * Web: https://www.merz-it-service.de
+ * Contact: info@merz-it-service.de
  *
  * Released under the GNU General Public License
  * --------------------------------------------------------------
  */
 
-defined('HEADING_TITLE') or define('HEADING_TITLE', 'MITS outils de base de donn&eacute;es');
-defined('TEXT_MITS_CDB_RESTORE_PAGE_TITLE') or define('TEXT_MITS_CDB_RESTORE_PAGE_TITLE', 'MITS Cron Database Backups - outils de base de donn&eacute;es');
-defined('TEXT_MITS_CDB_RESTORE_WARNING_TITLE') or define('TEXT_MITS_CDB_RESTORE_WARNING_TITLE', 'Attention : action risqu&eacute;e');
-defined('TEXT_MITS_CDB_RESTORE_WARNING') or define('TEXT_MITS_CDB_RESTORE_WARNING', 'Une restauration remplace des donn&eacute;es dans la base de donn&eacute;es actuelle de la boutique. Ex&eacute;cutez cette action uniquement si vous &ecirc;tes certain que la sauvegarde choisie correspond &agrave; la version de la boutique et &agrave; la base de donn&eacute;es. Avant l\'import, une sauvegarde de s&eacute;curit&eacute; suppl&eacute;mentaire de la base actuelle est cr&eacute;&eacute;e automatiquement.');
-defined('TEXT_MITS_CDB_RESTORE_INTRO') or define('TEXT_MITS_CDB_RESTORE_INTRO', 'S&eacute;lectionnez une sauvegarde SQL, SQL.GZ ou par tables existante. Vous pouvez aussi cr&eacute;er des sauvegardes manuelles, t&eacute;l&eacute;charger ou supprimer des fichiers de sauvegarde individuels et ex&eacute;cuter SQL directement.');
-defined('TEXT_MITS_CDB_RESTORE_NO_BACKUPS') or define('TEXT_MITS_CDB_RESTORE_NO_BACKUPS', 'Aucune sauvegarde .sql ou .sql.gz correspondante n\'a &eacute;t&eacute; trouv&eacute;e.');
-defined('TEXT_MITS_CDB_RESTORE_DIR_MODULE') or define('TEXT_MITS_CDB_RESTORE_DIR_MODULE', 'Dossier de sauvegarde MITS');
-defined('TEXT_MITS_CDB_RESTORE_DIR_ADMIN') or define('TEXT_MITS_CDB_RESTORE_DIR_ADMIN', 'Dossier de sauvegarde de la boutique');
-defined('TEXT_MITS_CDB_RESTORE_FILE') or define('TEXT_MITS_CDB_RESTORE_FILE', 'Fichier');
-defined('TEXT_MITS_CDB_RESTORE_DIRECTORY') or define('TEXT_MITS_CDB_RESTORE_DIRECTORY', 'Dossier');
-defined('TEXT_MITS_CDB_RESTORE_SIZE') or define('TEXT_MITS_CDB_RESTORE_SIZE', 'Taille');
-defined('TEXT_MITS_CDB_RESTORE_DATE') or define('TEXT_MITS_CDB_RESTORE_DATE', 'Date');
-defined('TEXT_MITS_CDB_RESTORE_TYPE') or define('TEXT_MITS_CDB_RESTORE_TYPE', 'Type');
-defined('TEXT_MITS_CDB_RESTORE_DOWNLOAD') or define('TEXT_MITS_CDB_RESTORE_DOWNLOAD', 'T&eacute;l&eacute;charger');
-defined('TEXT_MITS_CDB_RESTORE_CONFIRM_TITLE') or define('TEXT_MITS_CDB_RESTORE_CONFIRM_TITLE', 'Confirmer la restauration');
-defined('TEXT_MITS_CDB_RESTORE_CONFIRM_WARNING') or define('TEXT_MITS_CDB_RESTORE_CONFIRM_WARNING', 'Apr&egrave;s le d&eacute;marrage, le navigateur ne doit pas &ecirc;tre ferm&eacute;. La boutique peut r&eacute;agir bri&egrave;vement de fa&ccedil;on incorrecte pendant l\'import.');
-defined('TEXT_MITS_CDB_RESTORE_CONFIRM_INPUT') or define('TEXT_MITS_CDB_RESTORE_CONFIRM_INPUT', 'Pour confirmer, saisissez exactement <strong>RESTORE</strong> :');
-defined('TEXT_MITS_CDB_RESTORE_RESULT_SUCCESS') or define('TEXT_MITS_CDB_RESTORE_RESULT_SUCCESS', 'Restauration termin&eacute;e');
-defined('TEXT_MITS_CDB_RESTORE_RESULT_ERROR') or define('TEXT_MITS_CDB_RESTORE_RESULT_ERROR', 'Restauration &eacute;chou&eacute;e');
-defined('TEXT_MITS_CDB_RESTORE_SAFETY_BACKUP_CREATED') or define('TEXT_MITS_CDB_RESTORE_SAFETY_BACKUP_CREATED', 'Une sauvegarde de s&eacute;curit&eacute; a &eacute;t&eacute; cr&eacute;&eacute;e avant la restauration : %s');
-defined('TEXT_MITS_CDB_RESTORE_GZ_UNPACKED') or define('TEXT_MITS_CDB_RESTORE_GZ_UNPACKED', 'La sauvegarde GZIP a &eacute;t&eacute; temporairement d&eacute;compress&eacute;e.');
-defined('TEXT_MITS_CDB_RESTORE_SUCCESS') or define('TEXT_MITS_CDB_RESTORE_SUCCESS', 'La sauvegarde %s a &eacute;t&eacute; import&eacute;e avec succ&egrave;s dans la base de donn&eacute;es.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_EXEC_DISABLED') or define('TEXT_MITS_CDB_RESTORE_ERROR_EXEC_DISABLED', 'La fonction PHP exec() est d&eacute;sactiv&eacute;e. La restauration rapide via mysql n\'est donc pas possible.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_LOCKED') or define('TEXT_MITS_CDB_RESTORE_ERROR_LOCKED', 'Une restauration est d&eacute;j&agrave; en cours ou un ancien fichier de verrouillage existe. Veuillez r&eacute;essayer plus tard.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_TOKEN') or define('TEXT_MITS_CDB_RESTORE_ERROR_TOKEN', 'Le jeton de s&eacute;curit&eacute; est invalide. Rechargez la page et r&eacute;essayez.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE') or define('TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE', 'Le fichier de sauvegarde s&eacute;lectionn&eacute; est invalide ou n\'existe plus.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_CONFIRM') or define('TEXT_MITS_CDB_RESTORE_ERROR_CONFIRM', 'La confirmation est incorrecte. La restauration n\'a pas &eacute;t&eacute; lanc&eacute;e.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_SAFETY_DIR') or define('TEXT_MITS_CDB_RESTORE_ERROR_SAFETY_DIR', 'Le dossier de sauvegarde n\'est pas inscriptible. La sauvegarde de s&eacute;curit&eacute; avant restauration n\'a pas pu &ecirc;tre cr&eacute;&eacute;e.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_SAFETY_BACKUP') or define('TEXT_MITS_CDB_RESTORE_ERROR_SAFETY_BACKUP', 'La sauvegarde de s&eacute;curit&eacute; avant restauration n\'a pas pu &ecirc;tre cr&eacute;&eacute;e. L\'import a &eacute;t&eacute; annul&eacute;.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_ZLIB') or define('TEXT_MITS_CDB_RESTORE_ERROR_ZLIB', 'L\'extension PHP Zlib n\'est pas active. Les fichiers SQL.GZ ne peuvent pas &ecirc;tre d&eacute;compress&eacute;s.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_GZ_OPEN') or define('TEXT_MITS_CDB_RESTORE_ERROR_GZ_OPEN', 'Le fichier SQL.GZ n\'a pas pu &ecirc;tre ouvert.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_GZ_READ') or define('TEXT_MITS_CDB_RESTORE_ERROR_GZ_READ', 'Le fichier SQL.GZ n\'a pas pu &ecirc;tre lu compl&egrave;tement.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_TEMPFILE') or define('TEXT_MITS_CDB_RESTORE_ERROR_TEMPFILE', 'Le fichier SQL temporaire n\'a pas pu &ecirc;tre cr&eacute;&eacute;.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_IMPORT') or define('TEXT_MITS_CDB_RESTORE_ERROR_IMPORT', 'L\'import de %s a &eacute;chou&eacute;.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_DOWNLOAD') or define('TEXT_MITS_CDB_RESTORE_ERROR_DOWNLOAD', 'Le fichier de sauvegarde n\'a pas pu &ecirc;tre t&eacute;l&eacute;charg&eacute;.');
-
-defined('TEXT_MITS_CDB_RESTORE_ERROR_ZIPARCHIVE') or define('TEXT_MITS_CDB_RESTORE_ERROR_ZIPARCHIVE', 'L\'extension PHP ZipArchive n\'est pas active. Les sauvegardes ZIP ne peuvent pas &ecirc;tre d&eacute;compress&eacute;es.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_ZIP_OPEN') or define('TEXT_MITS_CDB_RESTORE_ERROR_ZIP_OPEN', 'Le fichier ZIP n\'a pas pu &ecirc;tre ouvert.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_ZIP_EMPTY') or define('TEXT_MITS_CDB_RESTORE_ERROR_ZIP_EMPTY', 'Aucun fichier SQL n\'a &eacute;t&eacute; trouv&eacute; dans le fichier ZIP.');
-defined('TEXT_MITS_CDB_RESTORE_ZIP_UNPACKED') or define('TEXT_MITS_CDB_RESTORE_ZIP_UNPACKED', 'La sauvegarde ZIP a &eacute;t&eacute; d&eacute;compress&eacute;e temporairement et pr&eacute;par&eacute;e pour l\'import.');
-defined('TEXT_MITS_CDB_RESTORE_RELOGIN_TITLE') or define('TEXT_MITS_CDB_RESTORE_RELOGIN_TITLE', 'La session admin a &eacute;t&eacute; termin&eacute;e');
-defined('TEXT_MITS_CDB_RESTORE_RELOGIN_TEXT') or define('TEXT_MITS_CDB_RESTORE_RELOGIN_TEXT', 'La restauration est termin&eacute;e. Pour des raisons de s&eacute;curit&eacute;, la session admin actuelle a &eacute;t&eacute; termin&eacute;e. Veuillez vous reconnecter &agrave; l\'administration.');
-defined('TEXT_MITS_CDB_RESTORE_RELOGIN_BUTTON') or define('TEXT_MITS_CDB_RESTORE_RELOGIN_BUTTON', 'Vers la connexion admin');
-defined('TEXT_MITS_CDB_RESTORE_RELOGIN_NOTE') or define('TEXT_MITS_CDB_RESTORE_RELOGIN_NOTE', 'Ceci est volontaire, car les donn&eacute;es de session, d\'administrateur et de droits peuvent avoir &eacute;t&eacute; remises &agrave; l\'&eacute;tat de la sauvegarde par la restauration.');
-defined('TEXT_MITS_CDB_RESTORE_HERO_TEXT') or define('TEXT_MITS_CDB_RESTORE_HERO_TEXT', 'Sauvegarder la base de donn&eacute;es, t&eacute;l&eacute;charger des sauvegardes, restaurer des tables de fa&ccedil;on cibl&eacute;e, supprimer d\'anciennes sauvegardes et ex&eacute;cuter des requ&ecirc;tes SQL directement. Remarque : une sauvegarde de s&eacute;curit&eacute; est cr&eacute;&eacute;e automatiquement avant une restauration.');
-defined('TEXT_MITS_CDB_RESTORE_MODULE_SETTINGS') or define('TEXT_MITS_CDB_RESTORE_MODULE_SETTINGS', 'Param&egrave;tres du module');
-defined('TEXT_MITS_CDB_RESTORE_REFRESH') or define('TEXT_MITS_CDB_RESTORE_REFRESH', 'Actualiser la liste');
-defined('TEXT_MITS_CDB_RESTORE_STAT_BACKUPS') or define('TEXT_MITS_CDB_RESTORE_STAT_BACKUPS', 'Sauvegardes');
-defined('TEXT_MITS_CDB_RESTORE_STAT_COMPRESSED') or define('TEXT_MITS_CDB_RESTORE_STAT_COMPRESSED', '%s compress&eacute;es');
-defined('TEXT_MITS_CDB_RESTORE_STAT_TOTAL_SIZE') or define('TEXT_MITS_CDB_RESTORE_STAT_TOTAL_SIZE', 'Taille totale');
-defined('TEXT_MITS_CDB_RESTORE_STAT_TOTAL_SIZE_META') or define('TEXT_MITS_CDB_RESTORE_STAT_TOTAL_SIZE_META', 'tous les fichiers trouv&eacute;s');
-defined('TEXT_MITS_CDB_RESTORE_STAT_LATEST') or define('TEXT_MITS_CDB_RESTORE_STAT_LATEST', 'Derni&egrave;re sauvegarde');
-defined('TEXT_MITS_CDB_RESTORE_STAT_LATEST_META') or define('TEXT_MITS_CDB_RESTORE_STAT_LATEST_META', 'fichier le plus r&eacute;cent en premier');
-defined('TEXT_MITS_CDB_RESTORE_STAT_SYSTEM') or define('TEXT_MITS_CDB_RESTORE_STAT_SYSTEM', '&Eacute;tat du syst&egrave;me');
-defined('TEXT_MITS_CDB_RESTORE_STAT_SYSTEM_META') or define('TEXT_MITS_CDB_RESTORE_STAT_SYSTEM_META', 'Import via client serveur');
-defined('TEXT_MITS_CDB_RESTORE_EXEC_AVAILABLE') or define('TEXT_MITS_CDB_RESTORE_EXEC_AVAILABLE', 'mysql pr&ecirc;t');
-defined('TEXT_MITS_CDB_RESTORE_EXEC_NOT_AVAILABLE') or define('TEXT_MITS_CDB_RESTORE_EXEC_NOT_AVAILABLE', 'exec d&eacute;sactiv&eacute;');
-defined('TEXT_MITS_CDB_RESTORE_RESULT_SUBTITLE') or define('TEXT_MITS_CDB_RESTORE_RESULT_SUBTITLE', 'Le r&eacute;sultat de la restauration est affich&eacute; ci-dessous.');
-defined('TEXT_MITS_CDB_RESTORE_CONFIRM_SUBTITLE') or define('TEXT_MITS_CDB_RESTORE_CONFIRM_SUBTITLE', 'Veuillez v&eacute;rifier le fichier et confirmer volontairement la restauration.');
-defined('TEXT_MITS_CDB_RESTORE_PROCESS_TITLE') or define('TEXT_MITS_CDB_RESTORE_PROCESS_TITLE', 'D&eacute;roulement de la restauration');
-defined('TEXT_MITS_CDB_RESTORE_PROCESS_SUBTITLE') or define('TEXT_MITS_CDB_RESTORE_PROCESS_SUBTITLE', 'Ces niveaux de s&eacute;curit&eacute; sont ex&eacute;cut&eacute;s avant et pendant l\'import.');
-defined('TEXT_MITS_CDB_RESTORE_STEP_BACKUP') or define('TEXT_MITS_CDB_RESTORE_STEP_BACKUP', 'La base de donn&eacute;es actuelle est sauvegard&eacute;e comme sauvegarde de s&eacute;curit&eacute;.');
-defined('TEXT_MITS_CDB_RESTORE_STEP_UNPACK') or define('TEXT_MITS_CDB_RESTORE_STEP_UNPACK', 'Les fichiers SQL.GZ et les sauvegardes par tables sont temporairement d&eacute;compress&eacute;s si n&eacute;cessaire.');
-defined('TEXT_MITS_CDB_RESTORE_STEP_IMPORT') or define('TEXT_MITS_CDB_RESTORE_STEP_IMPORT', 'L\'import est effectu&eacute; via le client mysql du serveur.');
-defined('TEXT_MITS_CDB_RESTORE_STEP_RELOGIN') or define('TEXT_MITS_CDB_RESTORE_STEP_RELOGIN', 'Apr&egrave;s une restauration r&eacute;ussie, la session admin est termin&eacute;e.');
-defined('TEXT_MITS_CDB_RESTORE_CARD_BACKUPS') or define('TEXT_MITS_CDB_RESTORE_CARD_BACKUPS', 'Sauvegardes disponibles');
-defined('TEXT_MITS_CDB_RESTORE_SAFETY_SUBTITLE') or define('TEXT_MITS_CDB_RESTORE_SAFETY_SUBTITLE', 'Veuillez v&eacute;rifier soigneusement avant le d&eacute;marrage.');
-defined('TEXT_MITS_CDB_RESTORE_ERROR_SAFETY_GZIP') or define('TEXT_MITS_CDB_RESTORE_ERROR_SAFETY_GZIP', 'La compression GZIP de la sauvegarde de s&eacute;curit&eacute; a &eacute;chou&eacute;. La restauration n\'a pas &eacute;t&eacute; lanc&eacute;e.');
-defined('TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_TOGGLE') or define('TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_TOGGLE', 'Afficher les fichiers de table individuels');
-defined('TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_COUNT') or define('TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_COUNT', '%s fichiers');
-defined('TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_INFO') or define('TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_INFO', 'Chaque fichier de table appartient &agrave; cette sauvegarde par table et peut &ecirc;tre t&eacute;l&eacute;charg&eacute;, restaur&eacute; ou supprim&eacute; s&eacute;par&eacute;ment.');
-defined('TEXT_MITS_CDB_RESTORE_TABLE_FILE_RESTORE') or define('TEXT_MITS_CDB_RESTORE_TABLE_FILE_RESTORE', 'Restaurer ce fichier de table.');
-defined('TEXT_MITS_CDB_RESTORE_TABLE_PRESELECTED_INFO') or define('TEXT_MITS_CDB_RESTORE_TABLE_PRESELECTED_INFO', 'Seul ce fichier de table est pr&eacute;s&eacute;lectionn&eacute; : %s');
-
-defined('TEXT_MITS_CDB_SQL_TITLE') or define('TEXT_MITS_CDB_SQL_TITLE', 'Ex&eacute;cuter SQL directement');
-defined('TEXT_MITS_CDB_SQL_SUBTITLE') or define('TEXT_MITS_CDB_SQL_SUBTITLE', 'Zone de requ&ecirc;te pour des instructions SQL individuelles.');
-defined('TEXT_MITS_CDB_SQL_WARNING_TITLE') or define('TEXT_MITS_CDB_SQL_WARNING_TITLE', 'Acc&egrave;s direct &agrave; la base de donn&eacute;es');
-defined('TEXT_MITS_CDB_SQL_WARNING') or define('TEXT_MITS_CDB_SQL_WARNING', 'Le code SQL est ex&eacute;cut&eacute; directement sur la base de donn&eacute;es actuelle de la boutique. Cr&eacute;ez d\'abord une sauvegarde. Les instructions d\'&eacute;criture doivent &ecirc;tre explicitement activ&eacute;es ci-dessous.');
-defined('TEXT_MITS_CDB_SQL_CODE') or define('TEXT_MITS_CDB_SQL_CODE', 'Code SQL');
-defined('TEXT_MITS_CDB_SQL_ROW_LIMIT') or define('TEXT_MITS_CDB_SQL_ROW_LIMIT', 'Nombre maximal de lignes affich&eacute;es');
-defined('TEXT_MITS_CDB_SQL_CONFIRM_WRITE') or define('TEXT_MITS_CDB_SQL_CONFIRM_WRITE', 'Autoriser explicitement les instructions SQL d\'&eacute;criture comme INSERT, UPDATE, DELETE, ALTER ou DROP.');
-defined('TEXT_MITS_CDB_SQL_RUN') or define('TEXT_MITS_CDB_SQL_RUN', 'Ex&eacute;cuter SQL');
-defined('TEXT_MITS_CDB_SQL_RESULT_SUCCESS') or define('TEXT_MITS_CDB_SQL_RESULT_SUCCESS', 'SQL ex&eacute;cut&eacute;');
-defined('TEXT_MITS_CDB_SQL_RESULT_ERROR') or define('TEXT_MITS_CDB_SQL_RESULT_ERROR', 'SQL &eacute;chou&eacute;');
-defined('TEXT_MITS_CDB_SQL_RESULT_SUBTITLE') or define('TEXT_MITS_CDB_SQL_RESULT_SUBTITLE', 'Le r&eacute;sultat de l\'ex&eacute;cution SQL est affich&eacute; ci-dessous.');
-defined('TEXT_MITS_CDB_SQL_RESULT_STATEMENT_TITLE') or define('TEXT_MITS_CDB_SQL_RESULT_STATEMENT_TITLE', 'SQL #%s');
-defined('TEXT_MITS_CDB_SQL_STATUS_OK') or define('TEXT_MITS_CDB_SQL_STATUS_OK', 'OK');
-defined('TEXT_MITS_CDB_SQL_STATUS_ERROR') or define('TEXT_MITS_CDB_SQL_STATUS_ERROR', 'Erreur');
-defined('TEXT_MITS_CDB_SQL_RESULT_EMPTY') or define('TEXT_MITS_CDB_SQL_RESULT_EMPTY', 'La requ&ecirc;te n\'a retourn&eacute; aucun enregistrement.');
-defined('TEXT_MITS_CDB_SQL_ERROR_EMPTY') or define('TEXT_MITS_CDB_SQL_ERROR_EMPTY', 'Aucun code SQL n\'a &eacute;t&eacute; saisi.');
-defined('TEXT_MITS_CDB_SQL_ERROR_CONNECTION') or define('TEXT_MITS_CDB_SQL_ERROR_CONNECTION', 'La connexion &agrave; la base de donn&eacute;es n\'est pas disponible.');
-defined('TEXT_MITS_CDB_SQL_ERROR_WRITE_CONFIRM') or define('TEXT_MITS_CDB_SQL_ERROR_WRITE_CONFIRM', 'Les instructions SQL d\'&eacute;criture n\'ont pas &eacute;t&eacute; ex&eacute;cut&eacute;es car l\'autorisation n\'a pas &eacute;t&eacute; activ&eacute;e.');
-defined('TEXT_MITS_CDB_SQL_ERROR_STATEMENT') or define('TEXT_MITS_CDB_SQL_ERROR_STATEMENT', 'SQL #%s a &eacute;chou&eacute; : %s');
-defined('TEXT_MITS_CDB_SQL_SUCCESS_ROWS') or define('TEXT_MITS_CDB_SQL_SUCCESS_ROWS', '%s enregistrements trouv&eacute;s, %s affich&eacute;s.');
-defined('TEXT_MITS_CDB_SQL_SUCCESS_AFFECTED') or define('TEXT_MITS_CDB_SQL_SUCCESS_AFFECTED', 'Instruction SQL ex&eacute;cut&eacute;e. Lignes affect&eacute;es : %s.');
-defined('TEXT_MITS_CDB_SQL_SUCCESS_INSERT_ID') or define('TEXT_MITS_CDB_SQL_SUCCESS_INSERT_ID', 'ID insert : %s.');
-defined('TEXT_MITS_CDB_SQL_SUCCESS_SUMMARY') or define('TEXT_MITS_CDB_SQL_SUCCESS_SUMMARY', '%s instruction(s) SQL ex&eacute;cut&eacute;e(s) avec succ&egrave;s.');
-defined('TEXT_MITS_CDB_RESTORE_DELETE') or define('TEXT_MITS_CDB_RESTORE_DELETE', 'Supprimer');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_CONFIRM') or define('TEXT_MITS_CDB_RESTORE_DELETE_CONFIRM', 'Supprimer vraiment cette sauvegarde ?\\n\\n%s');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_CONFIRM') or define('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_CONFIRM', 'Supprimer vraiment ce fichier de table ?\\n\\n%s');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_SUCCESS') or define('TEXT_MITS_CDB_RESTORE_DELETE_SUCCESS', 'Sauvegarde supprim&eacute;e : %s');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_ERROR') or define('TEXT_MITS_CDB_RESTORE_DELETE_ERROR', 'La sauvegarde n\'a pas pu &ecirc;tre supprim&eacute;e : %s');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_SUCCESS') or define('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_SUCCESS', 'Fichier de table supprim&eacute; : %s');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_ERROR') or define('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_ERROR', 'Le fichier de table n\'a pas pu &ecirc;tre supprim&eacute; : %s');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_FOLDER_EMPTY') or define('TEXT_MITS_CDB_RESTORE_DELETE_TABLE_FOLDER_EMPTY', 'Le dossier de sauvegarde par tables ne contenait plus de fichiers de table et a &eacute;t&eacute; supprim&eacute;.');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_RESULT_SUCCESS') or define('TEXT_MITS_CDB_RESTORE_DELETE_RESULT_SUCCESS', 'Sauvegarde supprim&eacute;e');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_RESULT_ERROR') or define('TEXT_MITS_CDB_RESTORE_DELETE_RESULT_ERROR', '&Eacute;chec de la suppression');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_RESULT_SUBTITLE') or define('TEXT_MITS_CDB_RESTORE_DELETE_RESULT_SUBTITLE', 'Le r&eacute;sultat de la suppression est affich&eacute; ci-dessous.');
-defined('TEXT_MITS_CDB_SQL_ERROR_FILE_OPERATION') or define('TEXT_MITS_CDB_SQL_ERROR_FILE_OPERATION', 'Les instructions SQL utilisant LOAD_FILE, LOAD DATA, INTO OUTFILE ou INTO DUMPFILE ne sont pas ex&eacute;cut&eacute;es pour des raisons de s&eacute;curit&eacute;.');
-defined('TEXT_MITS_CDB_RESTORE_SELECT_ALL') or define('TEXT_MITS_CDB_RESTORE_SELECT_ALL', 'Tout s&eacute;lectionner / d&eacute;s&eacute;lectionner');
-defined('TEXT_MITS_CDB_RESTORE_SELECT_BACKUP') or define('TEXT_MITS_CDB_RESTORE_SELECT_BACKUP', 'S&eacute;lectionner la sauvegarde : %s');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED') or define('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED', 'Supprimer la s&eacute;lection');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_CONFIRM') or define('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_CONFIRM', 'Supprimer d&eacute;finitivement les sauvegardes s&eacute;lectionn&eacute;es ?');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_INFO') or define('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_INFO', 'Les sauvegardes de tables s&eacute;lectionn&eacute;es sont supprim&eacute;es compl&egrave;tement, y compris tous les fichiers de tables.');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_NONE') or define('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_NONE', 'Aucune sauvegarde n\'a &eacute;t&eacute; s&eacute;lectionn&eacute;e pour la suppression.');
-defined('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_SUMMARY') or define('TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_SUMMARY', '%s sauvegarde(s) supprim&eacute;e(s), %s &eacute;chec(s).');
-
-defined('TEXT_MITS_CDB_BACKUP_TABLES_SELECT_ALL') or define('TEXT_MITS_CDB_BACKUP_TABLES_SELECT_ALL', 'S&eacute;lectionner / d&eacute;s&eacute;lectionner toutes les tables');
-
-defined('TEXT_MITS_CDB_CONVERT_TITLE') or define('TEXT_MITS_CDB_CONVERT_TITLE', 'Database conversion');
-defined('TEXT_MITS_CDB_CONVERT_SUBTITLE') or define('TEXT_MITS_CDB_CONVERT_SUBTITLE', 'Convert table engine and charset / collation.');
-defined('TEXT_MITS_CDB_CONVERT_WARNING_TITLE') or define('TEXT_MITS_CDB_CONVERT_WARNING_TITLE', 'Expert function');
-defined('TEXT_MITS_CDB_CONVERT_WARNING') or define('TEXT_MITS_CDB_CONVERT_WARNING', 'Engine and charset conversions directly change the current shop database. A safety backup is created automatically before selected tables are converted.');
-defined('TEXT_MITS_CDB_CONVERT_SEPARATE_TITLE') or define('TEXT_MITS_CDB_CONVERT_SEPARATE_TITLE', 'Run engine and charset separately');
-defined('TEXT_MITS_CDB_CONVERT_SEPARATE_INFO') or define('TEXT_MITS_CDB_CONVERT_SEPARATE_INFO', 'Table engine and charset are technically separate properties. For modern shops, InnoDB with utf8mb4 is usually the recommended combination, but utf8mb4 is not strictly bound to InnoDB.');
-defined('TEXT_MITS_CDB_CONVERT_TARGET_ENGINE') or define('TEXT_MITS_CDB_CONVERT_TARGET_ENGINE', 'Target engine');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_FILE') or define('TEXT_MITS_CDB_CONVERT_CONFIG_FILE', 'Active configure.php');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_CURRENT_ENGINE') or define('TEXT_MITS_CDB_CONVERT_CONFIG_CURRENT_ENGINE', 'Current DB_SERVER_ENGINE');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_NOT_SET') or define('TEXT_MITS_CDB_CONVERT_CONFIG_NOT_SET', 'not set');
-defined('TEXT_MITS_CDB_CONVERT_UPDATE_CONFIG') or define('TEXT_MITS_CDB_CONVERT_UPDATE_CONFIG', 'Set DB_SERVER_ENGINE in the active configure.php to the target engine.');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_NOT_WRITABLE') or define('TEXT_MITS_CDB_CONVERT_CONFIG_NOT_WRITABLE', 'The active configure.php is currently not writable. File permissions are temporarily adjusted during saving and restored afterwards.');
-defined('TEXT_MITS_CDB_CONVERT_NO_TABLES') or define('TEXT_MITS_CDB_CONVERT_NO_TABLES', 'No MyISAM/InnoDB tables were found.');
-defined('TEXT_MITS_CDB_CONVERT_TABLES_INFO') or define('TEXT_MITS_CDB_CONVERT_TABLES_INFO', 'Select the tables that should be converted to the target engine. Tables already using the target engine are skipped.');
-defined('TEXT_MITS_CDB_CONVERT_TABLES_SELECT_ALL') or define('TEXT_MITS_CDB_CONVERT_TABLES_SELECT_ALL', 'Select / deselect all tables');
-defined('TEXT_MITS_CDB_CONVERT_CONFIRM_CHECKBOX') or define('TEXT_MITS_CDB_CONVERT_CONFIRM_CHECKBOX', 'I have checked the selection and want to start the conversion.');
-defined('TEXT_MITS_CDB_CONVERT_START') or define('TEXT_MITS_CDB_CONVERT_START', 'Start conversion');
-defined('TEXT_MITS_CDB_CONVERT_CONFIRM_JS') or define('TEXT_MITS_CDB_CONVERT_CONFIRM_JS', 'Really start database conversion?\n\nPlease check that a current backup exists before continuing.');
-defined('TEXT_MITS_CDB_CONVERT_RESULT_SUCCESS') or define('TEXT_MITS_CDB_CONVERT_RESULT_SUCCESS', 'Database conversion completed');
-defined('TEXT_MITS_CDB_CONVERT_RESULT_ERROR') or define('TEXT_MITS_CDB_CONVERT_RESULT_ERROR', 'Database conversion failed');
-defined('TEXT_MITS_CDB_CONVERT_RESULT_SUBTITLE') or define('TEXT_MITS_CDB_CONVERT_RESULT_SUBTITLE', 'The database conversion result is shown below.');
-defined('TEXT_MITS_CDB_CONVERT_ERROR_CONFIRM') or define('TEXT_MITS_CDB_CONVERT_ERROR_CONFIRM', 'The confirmation for database conversion is missing.');
-defined('TEXT_MITS_CDB_CONVERT_ERROR_NO_ACTION') or define('TEXT_MITS_CDB_CONVERT_ERROR_NO_ACTION', 'No tables were selected and no configure.php update was enabled.');
-defined('TEXT_MITS_CDB_CONVERT_TABLE_INVALID') or define('TEXT_MITS_CDB_CONVERT_TABLE_INVALID', 'Table was not found or is not supported: %s');
-defined('TEXT_MITS_CDB_CONVERT_TABLE_SKIPPED') or define('TEXT_MITS_CDB_CONVERT_TABLE_SKIPPED', 'Table %s already uses %s.');
-defined('TEXT_MITS_CDB_CONVERT_TABLE_SUCCESS') or define('TEXT_MITS_CDB_CONVERT_TABLE_SUCCESS', 'Table %s was converted to %s.');
-defined('TEXT_MITS_CDB_CONVERT_TABLE_ERROR') or define('TEXT_MITS_CDB_CONVERT_TABLE_ERROR', 'Table %s could not be converted: %s');
-defined('TEXT_MITS_CDB_CONVERT_SUMMARY') or define('TEXT_MITS_CDB_CONVERT_SUMMARY', 'Conversion completed: %s converted, %s skipped, %s failed.');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_READ') or define('TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_READ', 'The active configure.php could not be read.');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_WRITE') or define('TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_WRITE', 'The active configure.php could not be made writable: %s');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_BACKUP') or define('TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_BACKUP', 'The configure.php backup could not be created: %s');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_SAVE') or define('TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_SAVE', 'The configure.php could not be saved.');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_BACKUP_CREATED') or define('TEXT_MITS_CDB_CONVERT_CONFIG_BACKUP_CREATED', 'configure.php backup created: %s');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_PERMISSIONS_RESTORED') or define('TEXT_MITS_CDB_CONVERT_CONFIG_PERMISSIONS_RESTORED', 'File permissions of configure.php were restored to %s.');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_UPDATED') or define('TEXT_MITS_CDB_CONVERT_CONFIG_UPDATED', 'DB_SERVER_ENGINE was set to %s in %s.');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_CHARSET_UPDATED') or define('TEXT_MITS_CDB_CONVERT_CONFIG_CHARSET_UPDATED', 'DB_SERVER_CHARSET was set in %s to %s.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_SUMMARY') or define('TEXT_MITS_CDB_CONVERT_CHARSET_SUMMARY', 'Charset conversion completed: %s converted, %s skipped, %s failed.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_TABLE_ERROR') or define('TEXT_MITS_CDB_CONVERT_CHARSET_TABLE_ERROR', 'Table %s could not be converted to %s / %s: %s');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_TABLE_SUCCESS') or define('TEXT_MITS_CDB_CONVERT_CHARSET_TABLE_SUCCESS', 'Table %s was converted to %s / %s.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_TABLE_SKIPPED') or define('TEXT_MITS_CDB_CONVERT_CHARSET_TABLE_SKIPPED', 'Table %s already uses %s.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_DATABASE_ERROR') or define('TEXT_MITS_CDB_CONVERT_CHARSET_DATABASE_ERROR', 'The database default could not be set to %s / %s: %s');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_DATABASE_SUCCESS') or define('TEXT_MITS_CDB_CONVERT_CHARSET_DATABASE_SUCCESS', 'The database default was set to %s / %s.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_ERROR_NO_ACTION') or define('TEXT_MITS_CDB_CONVERT_CHARSET_ERROR_NO_ACTION', 'No tables were selected and no charset update was enabled.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_ERROR_CONFIRM') or define('TEXT_MITS_CDB_CONVERT_CHARSET_ERROR_CONFIRM', 'The confirmation for charset conversion is missing.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_START') or define('TEXT_MITS_CDB_CONVERT_CHARSET_START', 'Start charset conversion');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_CONFIRM_CHECKBOX') or define('TEXT_MITS_CDB_CONVERT_CHARSET_CONFIRM_CHECKBOX', 'I have checked the encoding risk and want to start charset conversion.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_TABLES_INFO') or define('TEXT_MITS_CDB_CONVERT_CHARSET_TABLES_INFO', 'Select the tables that should be converted to the target charset and target collation.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_NO_TABLES') or define('TEXT_MITS_CDB_CONVERT_CHARSET_NO_TABLES', 'No tables with collation were found.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_UPDATE_CONFIG') or define('TEXT_MITS_CDB_CONVERT_CHARSET_UPDATE_CONFIG', 'Set DB_SERVER_CHARSET in the active configure.php to the target charset.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_UPDATE_DATABASE') or define('TEXT_MITS_CDB_CONVERT_CHARSET_UPDATE_DATABASE', 'Set database default to target charset and target collation.');
-defined('TEXT_MITS_CDB_CONVERT_CONFIG_CURRENT_CHARSET') or define('TEXT_MITS_CDB_CONVERT_CONFIG_CURRENT_CHARSET', 'Current DB_SERVER_CHARSET');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_DATABASE_CURRENT') or define('TEXT_MITS_CDB_CONVERT_CHARSET_DATABASE_CURRENT', 'Current database default');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_TARGET_COLLATION') or define('TEXT_MITS_CDB_CONVERT_CHARSET_TARGET_COLLATION', 'Target collation');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_TARGET_CHARSET') or define('TEXT_MITS_CDB_CONVERT_CHARSET_TARGET_CHARSET', 'Target charset');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_CONFIRM_JS') or define('TEXT_MITS_CDB_CONVERT_CHARSET_CONFIRM_JS', 'Really start charset conversion?\\n\\nPlease continue only if a current backup exists and the target charset has been selected correctly.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_WARNING') or define('TEXT_MITS_CDB_CONVERT_CHARSET_WARNING', 'This function runs a MySQL CONVERT TO CHARACTER SET on the selected tables. It does not repair already incorrectly encoded content. Use it only if the real data encoding and the target encoding are known.');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_WARNING_TITLE') or define('TEXT_MITS_CDB_CONVERT_CHARSET_WARNING_TITLE', 'Be careful with encoding conversions');
-defined('TEXT_MITS_CDB_CONVERT_CHARSET_TITLE') or define('TEXT_MITS_CDB_CONVERT_CHARSET_TITLE', 'Convert charset / collation');
+$lang_array = array(
+  'HEADING_TITLE' => 'Gestion de base de donn&eacute;es MITS',
+  'TEXT_MITS_CDB_RESTORE_PAGE_TITLE' => 'MITS Cron Database Backups - gestion de base de donn&eacute;es',
+  'TEXT_MITS_CDB_RESTORE_WARNING_TITLE' => 'Attention : action risqu&eacute;e',
+  'TEXT_MITS_CDB_RESTORE_WARNING' => 'Une restauration remplace des donn&eacute;es dans la base de donn&eacute;es actuelle de la boutique. Ex&eacute;cutez cette action uniquement si vous &ecirc;tes certain que la sauvegarde choisie correspond &agrave; la version de la boutique et &agrave; la base de donn&eacute;es. Avant l\'import, une sauvegarde de s&eacute;curit&eacute; suppl&eacute;mentaire de la base actuelle est cr&eacute;&eacute;e automatiquement.',
+  'TEXT_MITS_CDB_RESTORE_INTRO' => 'S&eacute;lectionnez une sauvegarde SQL, SQL.GZ ou par tables existante. Vous pouvez aussi cr&eacute;er des sauvegardes manuelles, t&eacute;l&eacute;charger ou supprimer des fichiers de sauvegarde individuels et ex&eacute;cuter SQL directement.',
+  'TEXT_MITS_CDB_RESTORE_NO_BACKUPS' => 'Aucune sauvegarde .sql ou .sql.gz correspondante n\'a &eacute;t&eacute; trouv&eacute;e.',
+  'TEXT_MITS_CDB_RESTORE_DIR_MODULE' => 'Dossier de sauvegarde MITS',
+  'TEXT_MITS_CDB_RESTORE_DIR_ADMIN' => 'Dossier de sauvegarde de la boutique',
+  'TEXT_MITS_CDB_RESTORE_FILE' => 'Fichier',
+  'TEXT_MITS_CDB_RESTORE_DIRECTORY' => 'Dossier',
+  'TEXT_MITS_CDB_RESTORE_SIZE' => 'Taille',
+  'TEXT_MITS_CDB_RESTORE_DATE' => 'Date',
+  'TEXT_MITS_CDB_RESTORE_TYPE' => 'Type',
+  'TEXT_MITS_CDB_RESTORE_DOWNLOAD' => 'T&eacute;l&eacute;charger',
+  'TEXT_MITS_CDB_RESTORE_CONFIRM_TITLE' => 'Confirmer la restauration',
+  'TEXT_MITS_CDB_RESTORE_CONFIRM_WARNING' => 'Apr&egrave;s le d&eacute;marrage, le navigateur ne doit pas &ecirc;tre ferm&eacute;. La boutique peut r&eacute;agir bri&egrave;vement de fa&ccedil;on incorrecte pendant l\'import.',
+  'TEXT_MITS_CDB_RESTORE_CONFIRM_INPUT' => 'Pour confirmer, saisissez exactement <strong>RESTORE</strong> :',
+  'TEXT_MITS_CDB_RESTORE_RESULT_SUCCESS' => 'Restauration termin&eacute;e',
+  'TEXT_MITS_CDB_RESTORE_RESULT_ERROR' => 'Restauration &eacute;chou&eacute;e',
+  'TEXT_MITS_CDB_RESTORE_SAFETY_BACKUP_CREATED' => 'Une sauvegarde de s&eacute;curit&eacute; a &eacute;t&eacute; cr&eacute;&eacute;e avant la restauration : %s',
+  'TEXT_MITS_CDB_RESTORE_GZ_UNPACKED' => 'La sauvegarde GZIP a &eacute;t&eacute; temporairement d&eacute;compress&eacute;e.',
+  'TEXT_MITS_CDB_RESTORE_SUCCESS' => 'La sauvegarde %s a &eacute;t&eacute; import&eacute;e avec succ&egrave;s dans la base de donn&eacute;es.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_EXEC_DISABLED' => 'La fonction PHP exec() est d&eacute;sactiv&eacute;e. La restauration rapide via mysql n\'est donc pas possible.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_LOCKED' => 'Une restauration est d&eacute;j&agrave; en cours ou un ancien fichier de verrouillage existe. Veuillez r&eacute;essayer plus tard.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_TOKEN' => 'Le jeton de s&eacute;curit&eacute; est invalide. Rechargez la page et r&eacute;essayez.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_INVALID_FILE' => 'Le fichier de sauvegarde s&eacute;lectionn&eacute; est invalide ou n\'existe plus.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_CONFIRM' => 'La confirmation est incorrecte. La restauration n\'a pas &eacute;t&eacute; lanc&eacute;e.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_SAFETY_DIR' => 'Le dossier de sauvegarde n\'est pas inscriptible. La sauvegarde de s&eacute;curit&eacute; avant restauration n\'a pas pu &ecirc;tre cr&eacute;&eacute;e.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_SAFETY_BACKUP' => 'La sauvegarde de s&eacute;curit&eacute; avant restauration n\'a pas pu &ecirc;tre cr&eacute;&eacute;e. L\'import a &eacute;t&eacute; annul&eacute;.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_ZLIB' => 'L\'extension PHP Zlib n\'est pas active. Les fichiers SQL.GZ ne peuvent pas &ecirc;tre d&eacute;compress&eacute;s.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_GZ_OPEN' => 'Le fichier SQL.GZ n\'a pas pu &ecirc;tre ouvert.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_GZ_READ' => 'Le fichier SQL.GZ n\'a pas pu &ecirc;tre lu compl&egrave;tement.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_TEMPFILE' => 'Le fichier SQL temporaire n\'a pas pu &ecirc;tre cr&eacute;&eacute;.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_IMPORT' => 'L\'import de %s a &eacute;chou&eacute;.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_DOWNLOAD' => 'Le fichier de sauvegarde n\'a pas pu &ecirc;tre t&eacute;l&eacute;charg&eacute;.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_ZIPARCHIVE' => 'L\'extension PHP ZipArchive n\'est pas active. Les sauvegardes ZIP ne peuvent pas &ecirc;tre d&eacute;compress&eacute;es.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_ZIP_OPEN' => 'Le fichier ZIP n\'a pas pu &ecirc;tre ouvert.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_ZIP_EMPTY' => 'Aucun fichier SQL n\'a &eacute;t&eacute; trouv&eacute; dans le fichier ZIP.',
+  'TEXT_MITS_CDB_RESTORE_ZIP_UNPACKED' => 'La sauvegarde ZIP a &eacute;t&eacute; d&eacute;compress&eacute;e temporairement et pr&eacute;par&eacute;e pour l\'import.',
+  'TEXT_MITS_CDB_RESTORE_RELOGIN_TITLE' => 'La session admin a &eacute;t&eacute; termin&eacute;e',
+  'TEXT_MITS_CDB_RESTORE_RELOGIN_TEXT' => 'La restauration est termin&eacute;e. Pour des raisons de s&eacute;curit&eacute;, la session admin actuelle a &eacute;t&eacute; termin&eacute;e. Veuillez vous reconnecter &agrave; l\'administration.',
+  'TEXT_MITS_CDB_RESTORE_RELOGIN_BUTTON' => 'Vers la connexion admin',
+  'TEXT_MITS_CDB_RESTORE_RELOGIN_NOTE' => 'Ceci est volontaire, car les donn&eacute;es de session, d\'administrateur et de droits peuvent avoir &eacute;t&eacute; remises &agrave; l\'&eacute;tat de la sauvegarde par la restauration.',
+  'TEXT_MITS_CDB_RESTORE_HERO_TEXT' => 'Sauvegarder la base de donn&eacute;es, t&eacute;l&eacute;charger des sauvegardes, restaurer des tables de fa&ccedil;on cibl&eacute;e, supprimer d\'anciennes sauvegardes et ex&eacute;cuter des requ&ecirc;tes SQL directement. Remarque : une sauvegarde de s&eacute;curit&eacute; est cr&eacute;&eacute;e automatiquement avant une restauration.',
+  'TEXT_MITS_CDB_RESTORE_MODULE_SETTINGS' => 'Param&egrave;tres du module',
+  'TEXT_MITS_CDB_RESTORE_DATABASE_MAINTENANCE' => 'Maintenance & nettoyage de la base',
+  'TEXT_MITS_CDB_RESTORE_REFRESH' => 'Actualiser la liste',
+  'TEXT_MITS_CDB_RESTORE_STAT_BACKUPS' => 'Sauvegardes',
+  'TEXT_MITS_CDB_RESTORE_STAT_COMPRESSED' => '%s compress&eacute;es',
+  'TEXT_MITS_CDB_RESTORE_STAT_TOTAL_SIZE' => 'Taille totale',
+  'TEXT_MITS_CDB_RESTORE_STAT_TOTAL_SIZE_META' => 'tous les fichiers trouv&eacute;s',
+  'TEXT_MITS_CDB_RESTORE_STAT_LATEST' => 'Derni&egrave;re sauvegarde',
+  'TEXT_MITS_CDB_RESTORE_STAT_LATEST_META' => 'fichier le plus r&eacute;cent en premier',
+  'TEXT_MITS_CDB_RESTORE_STAT_SYSTEM' => '&Eacute;tat du syst&egrave;me',
+  'TEXT_MITS_CDB_RESTORE_STAT_SYSTEM_META' => 'Import via client serveur',
+  'TEXT_MITS_CDB_RESTORE_EXEC_AVAILABLE' => 'mysql pr&ecirc;t',
+  'TEXT_MITS_CDB_RESTORE_EXEC_NOT_AVAILABLE' => 'exec d&eacute;sactiv&eacute;',
+  'TEXT_MITS_CDB_RESTORE_RESULT_SUBTITLE' => 'Le r&eacute;sultat de la restauration est affich&eacute; ci-dessous.',
+  'TEXT_MITS_CDB_RESTORE_CONFIRM_SUBTITLE' => 'Veuillez v&eacute;rifier le fichier et confirmer volontairement la restauration.',
+  'TEXT_MITS_CDB_RESTORE_PROCESS_TITLE' => 'D&eacute;roulement de la restauration',
+  'TEXT_MITS_CDB_RESTORE_PROCESS_SUBTITLE' => 'Ces niveaux de s&eacute;curit&eacute; sont ex&eacute;cut&eacute;s avant et pendant l\'import.',
+  'TEXT_MITS_CDB_RESTORE_STEP_BACKUP' => 'La base de donn&eacute;es actuelle est sauvegard&eacute;e comme sauvegarde de s&eacute;curit&eacute;.',
+  'TEXT_MITS_CDB_RESTORE_STEP_UNPACK' => 'Les fichiers SQL.GZ et les sauvegardes par tables sont temporairement d&eacute;compress&eacute;s si n&eacute;cessaire.',
+  'TEXT_MITS_CDB_RESTORE_STEP_IMPORT' => 'L\'import est effectu&eacute; via le client mysql du serveur.',
+  'TEXT_MITS_CDB_RESTORE_STEP_RELOGIN' => 'Apr&egrave;s une restauration r&eacute;ussie, la session admin est termin&eacute;e.',
+  'TEXT_MITS_CDB_RESTORE_CARD_BACKUPS' => 'Sauvegardes disponibles',
+  'TEXT_MITS_CDB_RESTORE_SAFETY_SUBTITLE' => 'Veuillez v&eacute;rifier soigneusement avant le d&eacute;marrage.',
+  'TEXT_MITS_CDB_RESTORE_ERROR_SAFETY_GZIP' => 'La compression GZIP de la sauvegarde de s&eacute;curit&eacute; a &eacute;chou&eacute;. La restauration n\'a pas &eacute;t&eacute; lanc&eacute;e.',
+  'TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_TOGGLE' => 'Afficher les fichiers de table individuels',
+  'TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_COUNT' => '%s fichiers',
+  'TEXT_MITS_CDB_RESTORE_TABLE_DOWNLOADS_INFO' => 'Chaque fichier de table appartient &agrave; cette sauvegarde par table et peut &ecirc;tre t&eacute;l&eacute;charg&eacute;, restaur&eacute; ou supprim&eacute; s&eacute;par&eacute;ment.',
+  'TEXT_MITS_CDB_RESTORE_TABLE_FILE_RESTORE' => 'Restaurer ce fichier de table.',
+  'TEXT_MITS_CDB_RESTORE_TABLE_PRESELECTED_INFO' => 'Seul ce fichier de table est pr&eacute;s&eacute;lectionn&eacute; : %s',
+  'TEXT_MITS_CDB_SQL_TITLE' => 'Ex&eacute;cuter SQL directement',
+  'TEXT_MITS_CDB_SQL_SUBTITLE' => 'Zone de requ&ecirc;te pour des instructions SQL individuelles.',
+  'TEXT_MITS_CDB_SQL_WARNING_TITLE' => 'Acc&egrave;s direct &agrave; la base de donn&eacute;es',
+  'TEXT_MITS_CDB_SQL_WARNING' => 'Le code SQL est ex&eacute;cut&eacute; directement sur la base de donn&eacute;es actuelle de la boutique. Cr&eacute;ez d\'abord une sauvegarde. Les instructions d\'&eacute;criture doivent &ecirc;tre explicitement activ&eacute;es ci-dessous.',
+  'TEXT_MITS_CDB_SQL_CODE' => 'Code SQL',
+  'TEXT_MITS_CDB_SQL_ROW_LIMIT' => 'Nombre maximal de lignes affich&eacute;es',
+  'TEXT_MITS_CDB_SQL_CONFIRM_WRITE' => 'Autoriser explicitement les instructions SQL d\'&eacute;criture comme INSERT, UPDATE, DELETE, ALTER ou DROP.',
+  'TEXT_MITS_CDB_SQL_RUN' => 'Ex&eacute;cuter SQL',
+  'TEXT_MITS_CDB_SQL_RESULT_SUCCESS' => 'SQL ex&eacute;cut&eacute;',
+  'TEXT_MITS_CDB_SQL_RESULT_ERROR' => 'SQL &eacute;chou&eacute;',
+  'TEXT_MITS_CDB_SQL_RESULT_SUBTITLE' => 'Le r&eacute;sultat de l\'ex&eacute;cution SQL est affich&eacute; ci-dessous.',
+  'TEXT_MITS_CDB_SQL_RESULT_STATEMENT_TITLE' => 'SQL #%s',
+  'TEXT_MITS_CDB_SQL_STATUS_OK' => 'OK',
+  'TEXT_MITS_CDB_SQL_STATUS_ERROR' => 'Erreur',
+  'TEXT_MITS_CDB_SQL_RESULT_EMPTY' => 'La requ&ecirc;te n\'a retourn&eacute; aucun enregistrement.',
+  'TEXT_MITS_CDB_SQL_ERROR_EMPTY' => 'Aucun code SQL n\'a &eacute;t&eacute; saisi.',
+  'TEXT_MITS_CDB_SQL_ERROR_CONNECTION' => 'La connexion &agrave; la base de donn&eacute;es n\'est pas disponible.',
+  'TEXT_MITS_CDB_SQL_ERROR_WRITE_CONFIRM' => 'Les instructions SQL d\'&eacute;criture n\'ont pas &eacute;t&eacute; ex&eacute;cut&eacute;es car l\'autorisation n\'a pas &eacute;t&eacute; activ&eacute;e.',
+  'TEXT_MITS_CDB_SQL_ERROR_STATEMENT' => 'SQL #%s a &eacute;chou&eacute; : %s',
+  'TEXT_MITS_CDB_SQL_SUCCESS_ROWS' => '%s enregistrements trouv&eacute;s, %s affich&eacute;s.',
+  'TEXT_MITS_CDB_SQL_SUCCESS_AFFECTED' => 'Instruction SQL ex&eacute;cut&eacute;e. Lignes affect&eacute;es : %s.',
+  'TEXT_MITS_CDB_SQL_SUCCESS_INSERT_ID' => 'ID insert : %s.',
+  'TEXT_MITS_CDB_SQL_SUCCESS_SUMMARY' => '%s instruction(s) SQL ex&eacute;cut&eacute;e(s) avec succ&egrave;s.',
+  'TEXT_MITS_CDB_RESTORE_DELETE' => 'Supprimer',
+  'TEXT_MITS_CDB_RESTORE_DELETE_CONFIRM' => 'Supprimer vraiment cette sauvegarde ?\\n\\n%s',
+  'TEXT_MITS_CDB_RESTORE_DELETE_TABLE_CONFIRM' => 'Supprimer vraiment ce fichier de table ?\\n\\n%s',
+  'TEXT_MITS_CDB_RESTORE_DELETE_SUCCESS' => 'Sauvegarde supprim&eacute;e : %s',
+  'TEXT_MITS_CDB_RESTORE_DELETE_ERROR' => 'La sauvegarde n\'a pas pu &ecirc;tre supprim&eacute;e : %s',
+  'TEXT_MITS_CDB_RESTORE_DELETE_TABLE_SUCCESS' => 'Fichier de table supprim&eacute; : %s',
+  'TEXT_MITS_CDB_RESTORE_DELETE_TABLE_ERROR' => 'Le fichier de table n\'a pas pu &ecirc;tre supprim&eacute; : %s',
+  'TEXT_MITS_CDB_RESTORE_DELETE_TABLE_FOLDER_EMPTY' => 'Le dossier de sauvegarde par tables ne contenait plus de fichiers de table et a &eacute;t&eacute; supprim&eacute;.',
+  'TEXT_MITS_CDB_RESTORE_DELETE_RESULT_SUCCESS' => 'Sauvegarde supprim&eacute;e',
+  'TEXT_MITS_CDB_RESTORE_DELETE_RESULT_ERROR' => '&Eacute;chec de la suppression',
+  'TEXT_MITS_CDB_RESTORE_DELETE_RESULT_SUBTITLE' => 'Le r&eacute;sultat de la suppression est affich&eacute; ci-dessous.',
+  'TEXT_MITS_CDB_SQL_ERROR_FILE_OPERATION' => 'Les instructions SQL utilisant LOAD_FILE, LOAD DATA, INTO OUTFILE ou INTO DUMPFILE ne sont pas ex&eacute;cut&eacute;es pour des raisons de s&eacute;curit&eacute;.',
+  'TEXT_MITS_CDB_RESTORE_SELECT_ALL' => 'Tout s&eacute;lectionner / d&eacute;s&eacute;lectionner',
+  'TEXT_MITS_CDB_RESTORE_SELECT_BACKUP' => 'S&eacute;lectionner la sauvegarde : %s',
+  'TEXT_MITS_CDB_RESTORE_DELETE_SELECTED' => 'Supprimer la s&eacute;lection',
+  'TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_CONFIRM' => 'Supprimer d&eacute;finitivement les sauvegardes s&eacute;lectionn&eacute;es ?',
+  'TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_INFO' => 'Les sauvegardes de tables s&eacute;lectionn&eacute;es sont supprim&eacute;es compl&egrave;tement, y compris tous les fichiers de tables.',
+  'TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_NONE' => 'Aucune sauvegarde n\'a &eacute;t&eacute; s&eacute;lectionn&eacute;e pour la suppression.',
+  'TEXT_MITS_CDB_RESTORE_DELETE_SELECTED_SUMMARY' => '%s sauvegarde(s) supprim&eacute;e(s), %s &eacute;chec(s).',
+  'TEXT_MITS_CDB_BACKUP_TABLES_SELECT_ALL' => 'S&eacute;lectionner / d&eacute;s&eacute;lectionner toutes les tables',
+  'TEXT_MITS_CDB_CONVERT_TITLE' => 'Database conversion',
+  'TEXT_MITS_CDB_CONVERT_SUBTITLE' => 'Convert table engine and charset / collation.',
+  'TEXT_MITS_CDB_CONVERT_WARNING_TITLE' => 'Expert function',
+  'TEXT_MITS_CDB_CONVERT_WARNING' => 'Engine and charset conversions directly change the current shop database. A safety backup is created automatically before selected tables are converted.',
+  'TEXT_MITS_CDB_CONVERT_SEPARATE_TITLE' => 'Run engine and charset separately',
+  'TEXT_MITS_CDB_CONVERT_SEPARATE_INFO' => 'Table engine and charset are technically separate properties. For modern shops, InnoDB with utf8mb4 is usually the recommended combination, but utf8mb4 is not strictly bound to InnoDB.',
+  'TEXT_MITS_CDB_CONVERT_TARGET_ENGINE' => 'Target engine',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_FILE' => 'Active configure.php',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_CURRENT_ENGINE' => 'Current DB_SERVER_ENGINE',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_NOT_SET' => 'not set',
+  'TEXT_MITS_CDB_CONVERT_UPDATE_CONFIG' => 'Set DB_SERVER_ENGINE in the active configure.php to the target engine.',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_NOT_WRITABLE' => 'The active configure.php is currently not writable. File permissions are temporarily adjusted during saving and restored afterwards.',
+  'TEXT_MITS_CDB_CONVERT_NO_TABLES' => 'No MyISAM/InnoDB tables were found.',
+  'TEXT_MITS_CDB_CONVERT_TABLES_INFO' => 'Select the tables that should be converted to the target engine. Tables already using the target engine are skipped.',
+  'TEXT_MITS_CDB_CONVERT_TABLES_SELECT_ALL' => 'Select / deselect all tables',
+  'TEXT_MITS_CDB_CONVERT_CONFIRM_CHECKBOX' => 'I have checked the selection and want to start the conversion.',
+  'TEXT_MITS_CDB_CONVERT_START' => 'Start conversion',
+  'TEXT_MITS_CDB_CONVERT_CONFIRM_JS' => 'Really start database conversion?\\n\\nPlease check that a current backup exists before continuing.',
+  'TEXT_MITS_CDB_CONVERT_RESULT_SUCCESS' => 'Database conversion completed',
+  'TEXT_MITS_CDB_CONVERT_RESULT_ERROR' => 'Database conversion failed',
+  'TEXT_MITS_CDB_CONVERT_RESULT_SUBTITLE' => 'The database conversion result is shown below.',
+  'TEXT_MITS_CDB_CONVERT_ERROR_CONFIRM' => 'The confirmation for database conversion is missing.',
+  'TEXT_MITS_CDB_CONVERT_ERROR_NO_ACTION' => 'No tables were selected and no configure.php update was enabled.',
+  'TEXT_MITS_CDB_CONVERT_TABLE_INVALID' => 'Table was not found or is not supported: %s',
+  'TEXT_MITS_CDB_CONVERT_TABLE_SKIPPED' => 'Table %s already uses %s.',
+  'TEXT_MITS_CDB_CONVERT_TABLE_SUCCESS' => 'Table %s was converted to %s.',
+  'TEXT_MITS_CDB_CONVERT_TABLE_ERROR' => 'Table %s could not be converted: %s',
+  'TEXT_MITS_CDB_CONVERT_SUMMARY' => 'Conversion completed: %s converted, %s skipped, %s failed.',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_READ' => 'The active configure.php could not be read.',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_WRITE' => 'The active configure.php could not be made writable: %s',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_BACKUP' => 'The configure.php backup could not be created: %s',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_ERROR_SAVE' => 'The configure.php could not be saved.',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_BACKUP_CREATED' => 'configure.php backup created: %s',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_PERMISSIONS_RESTORED' => 'File permissions of configure.php were restored to %s.',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_UPDATED' => 'DB_SERVER_ENGINE was set to %s in %s.',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_CHARSET_UPDATED' => 'DB_SERVER_CHARSET was set in %s to %s.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_SUMMARY' => 'Charset conversion completed: %s converted, %s skipped, %s failed.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_TABLE_ERROR' => 'Table %s could not be converted to %s / %s: %s',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_TABLE_SUCCESS' => 'Table %s was converted to %s / %s.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_TABLE_SKIPPED' => 'Table %s already uses %s.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_DATABASE_ERROR' => 'The database default could not be set to %s / %s: %s',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_DATABASE_SUCCESS' => 'The database default was set to %s / %s.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_ERROR_NO_ACTION' => 'No tables were selected and no charset update was enabled.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_ERROR_CONFIRM' => 'The confirmation for charset conversion is missing.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_START' => 'Start charset conversion',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_CONFIRM_CHECKBOX' => 'I have checked the encoding risk and want to start charset conversion.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_TABLES_INFO' => 'Select the tables that should be converted to the target charset and target collation.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_NO_TABLES' => 'No tables with collation were found.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_UPDATE_CONFIG' => 'Set DB_SERVER_CHARSET in the active configure.php to the target charset.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_UPDATE_DATABASE' => 'Set database default to target charset and target collation.',
+  'TEXT_MITS_CDB_CONVERT_CONFIG_CURRENT_CHARSET' => 'Current DB_SERVER_CHARSET',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_DATABASE_CURRENT' => 'Current database default',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_TARGET_COLLATION' => 'Target collation',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_TARGET_CHARSET' => 'Target charset',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_CONFIRM_JS' => 'Really start charset conversion?\\n\\nPlease continue only if a current backup exists and the target charset has been selected correctly.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_WARNING' => 'This function runs a MySQL CONVERT TO CHARACTER SET on the selected tables. It does not repair already incorrectly encoded content. Use it only if the real data encoding and the target encoding are known.',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_WARNING_TITLE' => 'Be careful with encoding conversions',
+  'TEXT_MITS_CDB_CONVERT_CHARSET_TITLE' => 'Convert charset / collation',
+  'TEXT_MITS_CDB_RESTORE_RUN_TASK_NOW' => 'Tester la t&acirc;che planifi&eacute;e maintenant',
+  'TEXT_MITS_CDB_RESTORE_RUN_TASK_CONFIRM' => 'Ex&eacute;cuter maintenant la t&acirc;che MITS via le runner normal de modified ? D\'autres t&acirc;ches d&eacute;j&agrave; arriv&eacute;es &agrave; &eacute;ch&eacute;ance peuvent &eacute;galement &ecirc;tre ex&eacute;cut&eacute;es.',
+  'TEXT_MITS_CDB_RESTORE_RUN_TASK_TITLE' => 'Tester la t&acirc;che planifi&eacute;e',
+  'TEXT_MITS_CDB_RESTORE_RUN_TASK_ERROR_TOKEN' => 'Le jeton de s&eacute;curit&eacute; est invalide. Rechargez la page et r&eacute;essayez.',
+  'TEXT_MITS_CDB_RESTORE_RUN_TASK_NOT_AVAILABLE' => 'La table des t&acirc;ches planifi&eacute;es n\'est pas disponible dans cette version de la boutique.',
+  'TEXT_MITS_CDB_RESTORE_RUN_TASK_NOT_FOUND' => 'La t&acirc;che MITS planifi&eacute;e est introuvable. Mettez &agrave; jour ou r&eacute;installez le module.',
+  'TEXT_MITS_CDB_RESTORE_RUN_TASK_DISABLED' => 'La t&acirc;che MITS planifi&eacute;e est d&eacute;sactiv&eacute;e. Activez-la d\'abord dans les t&acirc;ches planifi&eacute;es.',
+  'TEXT_MITS_CDB_RESTORE_RUN_TASK_STARTING' => 'La t&acirc;che MITS a &eacute;t&eacute; marqu&eacute;e comme arriv&eacute;e &agrave; &eacute;ch&eacute;ance. Le runner normal de modified est maintenant appel&eacute; par le navigateur.',
+  'TEXT_MITS_CDB_RESTORE_RUN_TASK_REQUEST_DONE' => 'Le runner de t&acirc;ches planifi&eacute;es de modified a &eacute;t&eacute; appel&eacute;. Cela ne confirme pas encore le succ&egrave;s de la sauvegarde ; v&eacute;rifiez maintenant la dur&eacute;e d\'ex&eacute;cution et le journal MITS.',
+  'TEXT_MITS_CDB_RESTORE_RUN_TASK_REQUEST_ERROR' => 'Le navigateur n\'a pas pu appeler le runner de t&acirc;ches planifi&eacute;es de modified.',
+  'TEXT_MITS_CDB_RESTORE_DATABASE_SYNC' => 'Database synchronization',
+);
+foreach ($lang_array as $key => $val) {
+    defined($key) || define($key, $val);
+}

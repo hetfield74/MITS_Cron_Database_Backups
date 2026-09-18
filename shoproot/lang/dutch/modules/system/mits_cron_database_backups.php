@@ -94,8 +94,41 @@ $lang_array = array(
   'MODULE_' . $modulname . '_BACKUP_MODE_TITLE' => 'Back-upmodus',
   'MODULE_' . $modulname . '_BACKUP_MODE_DESC'  => '<strong>single</strong> maakt &eacute;&eacute;n SQL-/SQL.GZ-bestand voor de volledige database. <strong>tables</strong> maakt een eigen back-upmap met &eacute;&eacute;n SQL.GZ-bestand per tabel.',
 
+  'MODULE_' . $modulname . '_MYSQLDUMP_PATH_TITLE' => 'Pad naar mysqldump',
+  'MODULE_' . $modulname . '_MYSQLDUMP_PATH_DESC'  => 'Optioneel pad naar het mysqldump-programma. Standaard is <strong>mysqldump</strong>. Alleen invullen als mysqldump niet via het standaardpad door de webservergebruiker wordt gevonden.',
+
+  'MODULE_' . $modulname . '_MYSQL_PATH_TITLE' => 'Pad naar mysql',
+  'MODULE_' . $modulname . '_MYSQL_PATH_DESC'  => 'Optioneel pad naar het mysql-programma voor herstelacties. Standaard is <strong>mysql</strong>. Alleen invullen als mysql niet via het standaardpad door de webservergebruiker wordt gevonden.',
+
+  'MODULE_' . $modulname . '_GZIP_PATH_TITLE' => 'Pad naar gzip',
+  'MODULE_' . $modulname . '_GZIP_PATH_DESC'  => 'Optioneel pad naar het gzip-programma. Standaard is <strong>gzip</strong>. Alleen wijzigen als gzip niet door de webservergebruiker wordt gevonden.',
+
+  'MODULE_' . $modulname . '_DB_HOST_TITLE' => 'Databasehost voor CLI-tools',
+  'MODULE_' . $modulname . '_DB_HOST_DESC'  => 'Optionele databasehost alleen voor mysqldump/mysql. Leeg = waarde uit <strong>DB_SERVER</strong>. Alleen instellen als de CLI-tools een andere host nodig hebben dan de shop zelf.',
+
+  'MODULE_' . $modulname . '_DB_PORT_TITLE' => 'Databasepoort voor CLI-tools',
+  'MODULE_' . $modulname . '_DB_PORT_DESC'  => 'Optionele databasepoort voor mysqldump/mysql. Leeg = standaardpoort of poort uit DB_SERVER als DB_SERVER host:port bevat. Alleen invullen bij een afwijkende MySQL/MariaDB-poort.',
+
+  'MODULE_' . $modulname . '_DB_SOCKET_TITLE' => 'Databasesocket voor CLI-tools',
+  'MODULE_' . $modulname . '_DB_SOCKET_DESC'  => 'Optionele MySQL/MariaDB-socket voor mysqldump/mysql. Alleen instellen als de server via socket moet worden aangesproken. TCP wordt dan niet afgedwongen.',
+
+  'MODULE_' . $modulname . '_DB_FORCE_TCP_TITLE' => 'TCP-verbinding afdwingen',
+  'MODULE_' . $modulname . '_DB_FORCE_TCP_DESC'  => 'Moet <strong>--protocol=TCP</strong> voor mysqldump/mysql worden gebruikt? Aanbevolen wanneer de database via TCP/IP in plaats van via een lokale socket moet worden benaderd, bijvoorbeeld bij een afwijkende poort.',
+
   'MODULE_' . $modulname . '_WRITE_LOG_TITLE' => 'Logbestanden schrijven',
-  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Moeten acties van de MITS database-tools in de logmap van de shop worden vastgelegd? Het logbestand heet <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
+  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Moeten back-ups, geplande taken, herstelacties en databasehulpmiddelen in de shoplogmap worden vastgelegd? Het logbestand heet <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_TITLE' => 'HTTP Basic Auth voor interne cURL-aanroepen',
+  'MODULE_' . $modulname . '_HTTP_AUTH_DESC'  => 'Activeer dit als de shop is beveiligd met <strong>.htaccess / HTTP Basic Auth</strong>. Deze gegevens worden uitsluitend door de modified Scheduled Task gebruikt voor de interne callback-aanroep. Externe cron-diensten moeten HTTP Basic Auth afzonderlijk meesturen.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_USER_TITLE' => 'HTTP Basic Auth-gebruikersnaam',
+  'MODULE_' . $modulname . '_HTTP_AUTH_USER_DESC'  => 'Optionele gebruikersnaam voor de HTTP Basic Auth-beveiliging. Alleen nodig wanneer HTTP Basic Auth voor interne cURL-aanroepen is geactiveerd.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_PASS_TITLE' => 'HTTP Basic Auth-wachtwoord',
+  'MODULE_' . $modulname . '_HTTP_AUTH_PASS_DESC'  => 'Optioneel wachtwoord voor de HTTP Basic Auth-beveiliging. Het wachtwoord wordt versleuteld in de database opgeslagen en nooit in URL\'s of logbestanden geschreven. Bewaar bij een serververhuizing ook <strong>includes/local/mits_cdb_sync_key.php</strong>.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_ENCRYPT_ERROR' => 'Het HTTP Basic Auth-wachtwoord kon niet veilig worden versleuteld en is daarom niet opgeslagen.',
+  'MODULE_' . $modulname . '_HTTP_AUTH_DECRYPT_ERROR' => 'Het opgeslagen HTTP Basic Auth-wachtwoord kan niet worden ontsleuteld. Voer het wachtwoord opnieuw in en sla het op.',
 
   'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Databaseback-up per e-mail verzenden',
   'MODULE_' . $modulname . '_SENDMAIL_DESC'  => 'Moet de databaseback-up per e-mail worden verzonden?',

@@ -36,7 +36,7 @@ class mits_cron_database_backups
     {
         $this->code = 'mits_cron_database_backups';
         $this->name = 'MODULE_' . strtoupper($this->code);
-        $this->version = '1.6.6';
+        $this->version = '1.8.5';
         $this->sort_order = defined($this->name . '_SORT_ORDER') ? constant($this->name . '_SORT_ORDER') : 0;
         $this->enabled = defined($this->name . '_STATUS') && (constant($this->name . '_STATUS') == 'true');
         $this->default_columns = 'configuration_key, configuration_value, configuration_group_id, sort_order, set_function';
@@ -71,14 +71,18 @@ class mits_cron_database_backups
         if (defined($this->name . '_STATUS')) {
             $this->installScheduledTask();
             $this->installAdminRestoreAccess();
+            $this->installAdminToolsAccess();
+            $this->installAdminSyncAccess();
+            $this->installSyncProfilesTable();
         }
     }
 
     /**
      * @return void
      */
-    public function process(): void
+    public function process($file = ''): void
     {
+        $this->secureHttpAuthPassword();
     }
 
     /**
@@ -173,8 +177,50 @@ class mits_cron_database_backups
             xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET configuration_value = 'tables' WHERE configuration_key = '" . $this->name . "_BACKUP_MODE' AND configuration_value = 'tables_zip'");
         }
 
+        if (!defined($this->name . '_MYSQLDUMP_PATH')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_MYSQLDUMP_PATH', 'mysqldump', 6, 8, NULL, now())");
+        }
+
+        if (!defined($this->name . '_MYSQL_PATH')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_MYSQL_PATH', 'mysql', 6, 9, NULL, now())");
+        }
+
+        if (!defined($this->name . '_GZIP_PATH')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_GZIP_PATH', 'gzip', 6, 10, NULL, now())");
+        }
+
+        if (!defined($this->name . '_DB_HOST')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_DB_HOST', '', 6, 11, NULL, now())");
+        }
+
+        if (!defined($this->name . '_DB_PORT')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_DB_PORT', '', 6, 12, NULL, now())");
+        }
+
+        if (!defined($this->name . '_DB_SOCKET')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_DB_SOCKET', '', 6, 13, NULL, now())");
+        }
+
+        if (!defined($this->name . '_DB_FORCE_TCP')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_DB_FORCE_TCP', 'false', 6, 14, 'xtc_cfg_select_option(array(\'true\', \'false\'), ', now())");
+        }
+
         if (!defined($this->name . '_WRITE_LOG')) {
             xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_WRITE_LOG', 'true', 6, 8, 'xtc_cfg_select_option(array(\'true\', \'false\'), ', now())");
+        }
+
+        if (!defined($this->name . '_HTTP_AUTH')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_HTTP_AUTH', 'false', 6, 15, 'xtc_cfg_select_option(array(\'true\', \'false\'), ', now())");
+        }
+
+        if (!defined($this->name . '_HTTP_AUTH_USER')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_HTTP_AUTH_USER', '', 6, 16, NULL, now())");
+        }
+
+        if (!defined($this->name . '_HTTP_AUTH_PASS')) {
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (configuration_key, configuration_value, configuration_group_id, sort_order, set_function, use_function, date_added) VALUES ('" . $this->name . "_HTTP_AUTH_PASS', '', 6, 17, 'xtc_cfg_password_field_module(', 'xtc_cfg_display_password', now())");
+        } else {
+            xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET set_function = 'xtc_cfg_password_field_module(', use_function = 'xtc_cfg_display_password' WHERE configuration_key = '" . $this->name . "_HTTP_AUTH_PASS'");
         }
 
         if (!defined($this->name . '_SENDMAIL')) {
@@ -224,6 +270,22 @@ class mits_cron_database_backups
         $this->ensureBackupDirectoryProtection();
         $this->installScheduledTask(1);
         $this->installAdminRestoreAccess();
+        $this->installAdminToolsAccess();
+        $this->installAdminSyncAccess();
+        $this->installSyncProfilesTable();
+        $sync_helper = rtrim(DIR_FS_DOCUMENT_ROOT, '/\\') . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'mits_cron_database_sync.php';
+        if (is_file($sync_helper)) {
+            require_once $sync_helper;
+            if (function_exists('mits_cdb_sync_write_profile_task_module')) {
+                $profile_table = $this->syncProfileTable();
+                if ($this->dbTableExists($profile_table)) {
+                    $profile_query = xtc_db_query("SELECT profile_id FROM `" . $profile_table . "` WHERE schedule_enabled='1'");
+                    while ($profile = xtc_db_fetch_array($profile_query)) {
+                        mits_cdb_sync_write_profile_task_module((int)$profile['profile_id']);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -248,6 +310,10 @@ class mits_cron_database_backups
     {
         $this->removeScheduledTask();
         $this->removeAdminRestoreAccess();
+        $this->removeAdminToolsAccess();
+        $this->removeAdminSyncAccess();
+        $this->removeSyncScheduledTask();
+        $this->removeSyncProfilesTable();
         xtc_db_query("DELETE FROM " . TABLE_CONFIGURATION . " WHERE configuration_key in ('" . implode("', '", $this->keys()) . "')");
         xtc_db_query("DELETE FROM " . TABLE_CONFIGURATION . " WHERE configuration_key LIKE '" . $this->name . "_%'");
     }
@@ -340,6 +406,161 @@ class mits_cron_database_backups
     }
 
     /**
+     * @return void
+     */
+    private function installAdminToolsAccess(): void
+    {
+        if (!defined('TABLE_ADMIN_ACCESS') || !$this->dbTableExists(TABLE_ADMIN_ACCESS)) {
+            return;
+        }
+
+        $column = 'mits_cron_database_tools';
+        if (!$this->dbColumnExists(TABLE_ADMIN_ACCESS, $column)) {
+            xtc_db_query("ALTER TABLE " . TABLE_ADMIN_ACCESS . " ADD `" . $column . "` INT(1) NOT NULL DEFAULT '0'");
+            xtc_db_query("UPDATE " . TABLE_ADMIN_ACCESS . " SET `" . $column . "` = 1 WHERE customers_id != 'groups'");
+        }
+    }
+
+    /**
+     * @return void
+     */
+    private function removeAdminToolsAccess(): void
+    {
+        if (!defined('TABLE_ADMIN_ACCESS') || !$this->dbTableExists(TABLE_ADMIN_ACCESS)) {
+            return;
+        }
+
+        $column = 'mits_cron_database_tools';
+        if ($this->dbColumnExists(TABLE_ADMIN_ACCESS, $column)) {
+            xtc_db_query("ALTER TABLE " . TABLE_ADMIN_ACCESS . " DROP `" . $column . "`");
+        }
+    }
+
+    /**
+     * @return string
+     */
+    private function syncProfileTable(): string
+    {
+        if (defined('TABLE_CONFIGURATION') && substr(TABLE_CONFIGURATION, -13) === 'configuration') {
+            return substr(TABLE_CONFIGURATION, 0, -13) . 'mits_cdb_sync_profiles';
+        }
+        return 'mits_cdb_sync_profiles';
+    }
+
+    /**
+     * @return void
+     */
+    private function installSyncProfilesTable(): void
+    {
+        $table = $this->syncProfileTable();
+        if ($this->dbTableExists($table)) {
+            return;
+        }
+
+        xtc_db_query("CREATE TABLE `" . $table . "` (
+          `profile_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+          `name` varchar(190) NOT NULL,
+          `enabled` tinyint(1) NOT NULL DEFAULT '1',
+          `target_host` varchar(255) NOT NULL DEFAULT '',
+          `target_port` varchar(10) NOT NULL DEFAULT '',
+          `target_socket` varchar(255) NOT NULL DEFAULT '',
+          `target_database` varchar(255) NOT NULL DEFAULT '',
+          `target_username` varchar(255) NOT NULL DEFAULT '',
+          `target_password` text NOT NULL,
+          `target_force_tcp` tinyint(1) NOT NULL DEFAULT '1',
+          `target_ssl_mode` varchar(20) NOT NULL DEFAULT 'preferred',
+          `target_ssl_ca` varchar(500) NOT NULL DEFAULT '',
+          `sync_mode` varchar(20) NOT NULL DEFAULT 'full',
+          `tables_json` mediumtext NOT NULL,
+          `schedule_enabled` tinyint(1) NOT NULL DEFAULT '0',
+          `schedule_regularity` int(10) unsigned NOT NULL DEFAULT '1',
+          `schedule_unit` char(1) NOT NULL DEFAULT 'd',
+          `schedule_time` char(5) NOT NULL DEFAULT '04:00',
+          `next_run` int(10) unsigned NOT NULL DEFAULT '0',
+          `last_run` int(10) unsigned NOT NULL DEFAULT '0',
+          `last_status` varchar(20) NOT NULL DEFAULT '',
+          `last_message` text NOT NULL,
+          `date_added` datetime NOT NULL,
+          `date_updated` datetime NOT NULL,
+          PRIMARY KEY (`profile_id`),
+          KEY `idx_schedule` (`enabled`,`schedule_enabled`,`next_run`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    /**
+     * @return void
+     */
+    private function removeSyncProfilesTable(): void
+    {
+        $table = $this->syncProfileTable();
+        if ($this->dbTableExists($table)) {
+            xtc_db_query("DROP TABLE `" . $table . "`");
+        }
+    }
+
+    /**
+     * @return void
+     */
+    private function removeSyncScheduledTask(): void
+    {
+        if (!defined('TABLE_SCHEDULED_TASKS') || !$this->dbTableExists(TABLE_SCHEDULED_TASKS)) {
+            return;
+        }
+
+        $query = xtc_db_query(
+            "SELECT tasks_id FROM " . TABLE_SCHEDULED_TASKS
+            . " WHERE tasks LIKE 'mits_cron_database_sync_profile_%'"
+        );
+        while ($row = xtc_db_fetch_array($query)) {
+            if (defined('TABLE_SCHEDULED_TASKS_LOG') && $this->dbTableExists(TABLE_SCHEDULED_TASKS_LOG)) {
+                xtc_db_query("DELETE FROM " . TABLE_SCHEDULED_TASKS_LOG . " WHERE tasks_id='" . (int)$row['tasks_id'] . "'");
+            }
+        }
+        xtc_db_query(
+            "DELETE FROM " . TABLE_SCHEDULED_TASKS
+            . " WHERE tasks LIKE 'mits_cron_database_sync_profile_%'"
+        );
+
+        $pattern = rtrim(DIR_FS_DOCUMENT_ROOT, '/\\') . DIRECTORY_SEPARATOR
+            . 'api' . DIRECTORY_SEPARATOR . 'scheduled_tasks' . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR
+            . 'mits_cron_database_sync_profile_*.php';
+        foreach ((array)glob($pattern) as $file) {
+            if (is_file($file)) {
+                @unlink($file);
+            }
+        }
+    }
+
+    /**
+     * @return void
+     */
+    private function installAdminSyncAccess(): void
+    {
+        if (!defined('TABLE_ADMIN_ACCESS') || !$this->dbTableExists(TABLE_ADMIN_ACCESS)) {
+            return;
+        }
+        $column = 'mits_cron_database_sync';
+        if (!$this->dbColumnExists(TABLE_ADMIN_ACCESS, $column)) {
+            xtc_db_query("ALTER TABLE " . TABLE_ADMIN_ACCESS . " ADD `" . $column . "` INT(1) NOT NULL DEFAULT '0'");
+            xtc_db_query("UPDATE " . TABLE_ADMIN_ACCESS . " SET `" . $column . "`=1 WHERE customers_id != 'groups'");
+        }
+    }
+
+    /**
+     * @return void
+     */
+    private function removeAdminSyncAccess(): void
+    {
+        if (!defined('TABLE_ADMIN_ACCESS') || !$this->dbTableExists(TABLE_ADMIN_ACCESS)) {
+            return;
+        }
+        $column = 'mits_cron_database_sync';
+        if ($this->dbColumnExists(TABLE_ADMIN_ACCESS, $column)) {
+            xtc_db_query("ALTER TABLE " . TABLE_ADMIN_ACCESS . " DROP `" . $column . "`");
+        }
+    }
+
+    /**
      * @return string[]
      */
     public function keys(): array
@@ -352,7 +573,17 @@ class mits_cron_database_backups
           $this->name . '_EXTENDED_INSERT',
           $this->name . '_SQL_COMMENTS',
           $this->name . '_BACKUP_MODE',
+          $this->name . '_MYSQLDUMP_PATH',
+          $this->name . '_MYSQL_PATH',
+          $this->name . '_GZIP_PATH',
+          $this->name . '_DB_HOST',
+          $this->name . '_DB_PORT',
+          $this->name . '_DB_SOCKET',
+          $this->name . '_DB_FORCE_TCP',
           $this->name . '_WRITE_LOG',
+          $this->name . '_HTTP_AUTH',
+          $this->name . '_HTTP_AUTH_USER',
+          $this->name . '_HTTP_AUTH_PASS',
           $this->name . '_SENDMAIL',
           $this->name . '_MAILADDRESS',
           $this->name . '_SENDFTP',
@@ -370,6 +601,65 @@ class mits_cron_database_backups
     /**
      * @return void
      */
+    private function secureHttpAuthPassword(): void
+    {
+        global $messageStack;
+
+        $configuration_key = $this->name . '_HTTP_AUTH_PASS';
+        $query = xtc_db_query("SELECT configuration_value FROM " . TABLE_CONFIGURATION . " WHERE configuration_key = '" . $configuration_key . "' LIMIT 1");
+        if (xtc_db_num_rows($query) === 0) {
+            return;
+        }
+
+        $row = xtc_db_fetch_array($query);
+        $value = isset($row['configuration_value']) ? (string)$row['configuration_value'] : '';
+        if ($value === '') {
+            return;
+        }
+
+        $helper = rtrim(DIR_FS_DOCUMENT_ROOT, '/\\') . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'mits_cron_database_sync.php';
+        if (!is_file($helper)) {
+            xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET configuration_value = '' WHERE configuration_key = '" . $configuration_key . "'");
+            if (isset($messageStack) && defined($this->name . '_HTTP_AUTH_ENCRYPT_ERROR')) {
+                $messageStack->add_session(constant($this->name . '_HTTP_AUTH_ENCRYPT_ERROR'), 'error');
+            }
+            return;
+        }
+
+        require_once $helper;
+        if (!function_exists('mits_cdb_sync_encrypt_password') || !function_exists('mits_cdb_sync_decrypt_password')) {
+            xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET configuration_value = '' WHERE configuration_key = '" . $configuration_key . "'");
+            if (isset($messageStack) && defined($this->name . '_HTTP_AUTH_ENCRYPT_ERROR')) {
+                $messageStack->add_session(constant($this->name . '_HTTP_AUTH_ENCRYPT_ERROR'), 'error');
+            }
+            return;
+        }
+
+        if (strpos($value, 'v1:') === 0) {
+            if (mits_cdb_sync_decrypt_password($value) === false
+                && isset($messageStack)
+                && defined($this->name . '_HTTP_AUTH_DECRYPT_ERROR')) {
+                $messageStack->add_session(constant($this->name . '_HTTP_AUTH_DECRYPT_ERROR'), 'error');
+            }
+            return;
+        }
+
+        $encrypted = mits_cdb_sync_encrypt_password($value);
+        if ($encrypted === false) {
+
+            xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET configuration_value = '' WHERE configuration_key = '" . $configuration_key . "'");
+            if (isset($messageStack) && defined($this->name . '_HTTP_AUTH_ENCRYPT_ERROR')) {
+                $messageStack->add_session(constant($this->name . '_HTTP_AUTH_ENCRYPT_ERROR'), 'error');
+            }
+            return;
+        }
+
+        xtc_db_query("UPDATE " . TABLE_CONFIGURATION . " SET configuration_value = '" . xtc_db_input($encrypted) . "', last_modified = NOW() WHERE configuration_key = '" . $configuration_key . "'");
+    }
+
+    /**
+     * @return void
+     */
     private function ensureBackupDirectoryProtection(): void
     {
         $dir = rtrim(DIR_FS_DOCUMENT_ROOT . 'export/mits_cron_database_backups', '/\\') . DIRECTORY_SEPARATOR;
@@ -380,33 +670,28 @@ class mits_cron_database_backups
         if (!is_dir($dir) || !is_writable($dir)) {
             return;
         }
-
-        $marker = 'MITS Cron Database Backups Protection';
-        $htaccess_file = $dir . '.htaccess';
-        $htaccess_block = "
-# BEGIN " . $marker . "
+    $protection_check = 'Require all denied';
+    $htaccess_file = $dir . '.htaccess';
+    $htaccess_block = "
+Options -Indexes
 "
-          . "Options -Indexes
+      . "<IfModule mod_authz_core.c>
 "
-          . "<IfModule mod_authz_core.c>
+      . "  Require all denied
 "
-          . "  Require all denied
+      . "</IfModule>
 "
-          . "</IfModule>
+      . "<IfModule !mod_authz_core.c>
 "
-          . "<IfModule !mod_authz_core.c>
+      . "  Order deny,allow
 "
-          . "  Order deny,allow
+      . "  Deny from all
 "
-          . "  Deny from all
-"
-          . "</IfModule>
-"
-          . "# END " . $marker . "
+      . "</IfModule>
 ";
 
-        $current_htaccess = is_file($htaccess_file) ? (string)@file_get_contents($htaccess_file) : '';
-        if ($current_htaccess === '' || strpos($current_htaccess, $marker) === false) {
+    $current_htaccess = is_file($htaccess_file) ? (string)@file_get_contents($htaccess_file) : '';
+        if ($current_htaccess === '' || strpos($current_htaccess, $protection_check) === false) {
             @file_put_contents($htaccess_file, rtrim($current_htaccess) . $htaccess_block, LOCK_EX);
             @chmod($htaccess_file, 0644);
         }
@@ -446,7 +731,6 @@ class mits_cron_database_backups
         }
     }
 
-
     /**
      * @param string $table
      * @param string $column
@@ -474,7 +758,11 @@ class mits_cron_database_backups
      */
     protected function removeOldFiles(): void
     {
-        $old_files_array = array();
+        $admin_dir = defined('DIR_ADMIN') ? DIR_ADMIN : 'admin/';
+        $old_files_array = array(
+          DIR_FS_DOCUMENT_ROOT . $admin_dir . 'includes/extra/menu/mits_cron_database_tools.php',
+          DIR_FS_DOCUMENT_ROOT . 'api/scheduled_tasks/modules/mits_cron_database_sync.php',
+        );
 
         foreach ($old_files_array as $delete_file) {
             if (is_file($delete_file)) {
@@ -521,13 +809,20 @@ class mits_cron_database_backups
           DIR_FS_DOCUMENT_ROOT . $admin_dir . 'includes/modules/system/' . $this->code . '.php',
           DIR_FS_DOCUMENT_ROOT . $admin_dir . 'includes/extra/menu/mits_cron_database_restore.php',
           DIR_FS_DOCUMENT_ROOT . $admin_dir . 'mits_cron_database_restore.php',
+          DIR_FS_DOCUMENT_ROOT . $admin_dir . 'includes/extra/menu/mits_cron_database_tools.php',
+          DIR_FS_DOCUMENT_ROOT . $admin_dir . 'mits_cron_database_tools.php',
+          DIR_FS_DOCUMENT_ROOT . $admin_dir . 'mits_cron_database_sync.php',
           DIR_FS_DOCUMENT_ROOT . 'api/scheduled_tasks/modules/' . $this->code . '.php',
+          DIR_FS_DOCUMENT_ROOT . 'includes/mits_cron_database_sync.php',
+          DIR_FS_DOCUMENT_ROOT . 'includes/local/mits_cdb_sync_key.php',
         );
 
         $languages = xtc_get_languages();
         if (count($languages) > 1) {
             foreach ($languages as $language) {
                 $remove_files_array[] = DIR_FS_DOCUMENT_ROOT . 'lang/' . $language['directory'] . '/admin/mits_cron_database_restore.php';
+                $remove_files_array[] = DIR_FS_DOCUMENT_ROOT . 'lang/' . $language['directory'] . '/admin/mits_cron_database_tools.php';
+                $remove_files_array[] = DIR_FS_DOCUMENT_ROOT . 'lang/' . $language['directory'] . '/admin/mits_cron_database_sync.php';
                 $remove_files_array[] = DIR_FS_DOCUMENT_ROOT . 'lang/' . $language['directory'] . '/extra/admin/' . $this->code . '.php';
                 $remove_files_array[] = DIR_FS_DOCUMENT_ROOT . 'lang/' . $language['directory'] . '/extra/admin/mits_cron_database_restore.php';
                 $remove_files_array[] = DIR_FS_DOCUMENT_ROOT . 'lang/' . $language['directory'] . '/modules/system/' . $this->code . '.php';
@@ -540,6 +835,17 @@ class mits_cron_database_backups
             }
         }
 
+        foreach ((array)glob(DIR_FS_DOCUMENT_ROOT . 'api/scheduled_tasks/modules/mits_cron_database_sync_profile_*.php') as $delete_file) {
+            if (is_file($delete_file)) {
+                @unlink($delete_file);
+            }
+        }
+
         $this->deleteDirectory(DIR_FS_DOCUMENT_ROOT . 'callback/' . $this->code);
+        $this->deleteDirectory(DIR_FS_DOCUMENT_ROOT . 'export/mits_cron_database_backups/.sync_tmp');
+        if (function_exists('sys_get_temp_dir')) {
+            $system_sync_tmp = rtrim((string)sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'mits_cdb_sync_' . substr(hash('sha256', DIR_FS_DOCUMENT_ROOT), 0, 16);
+            $this->deleteDirectory($system_sync_tmp);
+        }
     }
 }

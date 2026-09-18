@@ -94,8 +94,41 @@ $lang_array = array(
   'MODULE_' . $modulname . '_BACKUP_MODE_TITLE' => 'Backup mode',
   'MODULE_' . $modulname . '_BACKUP_MODE_DESC'  => '<strong>single</strong> creates one SQL/SQL.GZ file for the complete database. <strong>tables</strong> creates a dedicated backup folder with one SQL.GZ file per table.',
 
+  'MODULE_' . $modulname . '_MYSQLDUMP_PATH_TITLE' => 'Path to mysqldump',
+  'MODULE_' . $modulname . '_MYSQLDUMP_PATH_DESC'  => 'Optional path to the mysqldump binary. Default is <strong>mysqldump</strong>. Only fill this in if mysqldump cannot be found by the webserver user via the default path.',
+
+  'MODULE_' . $modulname . '_MYSQL_PATH_TITLE' => 'Path to mysql',
+  'MODULE_' . $modulname . '_MYSQL_PATH_DESC'  => 'Optional path to the mysql binary for restores. Default is <strong>mysql</strong>. Only fill this in if mysql cannot be found by the webserver user via the default path.',
+
+  'MODULE_' . $modulname . '_GZIP_PATH_TITLE' => 'Path to gzip',
+  'MODULE_' . $modulname . '_GZIP_PATH_DESC'  => 'Optional path to the gzip binary. Default is <strong>gzip</strong>. Leave empty or change only if gzip is not found by the web server user.',
+
+  'MODULE_' . $modulname . '_DB_HOST_TITLE' => 'Database host for CLI tools',
+  'MODULE_' . $modulname . '_DB_HOST_DESC'  => 'Optional database host for mysqldump/mysql only. Empty = value from <strong>DB_SERVER</strong>. Only set this if the CLI tools require a different host than the shop itself.',
+
+  'MODULE_' . $modulname . '_DB_PORT_TITLE' => 'Database port for CLI tools',
+  'MODULE_' . $modulname . '_DB_PORT_DESC'  => 'Optional database port for mysqldump/mysql. Empty = default port or the port parsed from DB_SERVER if DB_SERVER uses host:port. Only fill this in for a custom MySQL/MariaDB port.',
+
+  'MODULE_' . $modulname . '_DB_SOCKET_TITLE' => 'Database socket for CLI tools',
+  'MODULE_' . $modulname . '_DB_SOCKET_DESC'  => 'Optional MySQL/MariaDB socket for mysqldump/mysql. Set this only if the server should be accessed through a socket. TCP is not forced when a socket is set.',
+
+  'MODULE_' . $modulname . '_DB_FORCE_TCP_TITLE' => 'Force TCP connection',
+  'MODULE_' . $modulname . '_DB_FORCE_TCP_DESC'  => 'Use <strong>--protocol=TCP</strong> for mysqldump/mysql? Recommended when the database should be accessed via TCP/IP instead of a local socket, e.g. when using a custom port.',
+
   'MODULE_' . $modulname . '_WRITE_LOG_TITLE' => 'Write log files',
-  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Should actions from the MITS database tools be written to the shop log directory? The log file is named <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
+  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Should backups, scheduled tasks, restores and database tools be logged in the shop log directory? The log file is named <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_TITLE' => 'HTTP Basic Auth for internal cURL requests',
+  'MODULE_' . $modulname . '_HTTP_AUTH_DESC'  => 'Enable this if the shop is protected by <strong>.htaccess / HTTP Basic Auth</strong>. These credentials are used only by the modified Scheduled Task for the internal callback request. External cron services must send HTTP Basic Auth separately.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_USER_TITLE' => 'HTTP Basic Auth username',
+  'MODULE_' . $modulname . '_HTTP_AUTH_USER_DESC'  => 'Optional username for the HTTP Basic Auth protection. Required only when <strong>HTTP Basic Auth for internal cURL requests</strong> is enabled.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_PASS_TITLE' => 'HTTP Basic Auth password',
+  'MODULE_' . $modulname . '_HTTP_AUTH_PASS_DESC'  => 'Optional password for the HTTP Basic Auth protection. The password is stored encrypted in the database and is never written to URLs or log files. The local key at <strong>includes/local/mits_cdb_sync_key.php</strong> must be retained when moving the shop to another server.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_ENCRYPT_ERROR' => 'The HTTP Basic Auth password could not be encrypted securely and was therefore not stored.',
+  'MODULE_' . $modulname . '_HTTP_AUTH_DECRYPT_ERROR' => 'The stored HTTP Basic Auth password cannot be decrypted. Please enter and save the password again.',
 
   'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Send database backup by email',
   'MODULE_' . $modulname . '_SENDMAIL_DESC'  => 'Should the database backup be sent by email?',

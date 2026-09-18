@@ -94,8 +94,42 @@ $lang_array = array(
   'MODULE_' . $modulname . '_BACKUP_MODE_TITLE' => 'Modalit&agrave; backup',
   'MODULE_' . $modulname . '_BACKUP_MODE_DESC'  => '<strong>single</strong> crea un file SQL/SQL.GZ per l\'intero database. <strong>tables</strong> crea una cartella di backup dedicata con un file SQL.GZ per tabella.',
 
+
+  'MODULE_' . $modulname . '_MYSQLDUMP_PATH_TITLE' => 'Percorso di mysqldump',
+  'MODULE_' . $modulname . '_MYSQLDUMP_PATH_DESC'  => 'Percorso opzionale del programma mysqldump. Il valore standard &egrave; <strong>mysqldump</strong>. Compilare solo se mysqldump non viene trovato dall\'utente del server Web tramite il percorso standard.',
+
+  'MODULE_' . $modulname . '_MYSQL_PATH_TITLE' => 'Percorso di mysql',
+  'MODULE_' . $modulname . '_MYSQL_PATH_DESC'  => 'Percorso opzionale del programma mysql per i ripristini. Il valore standard &egrave; <strong>mysql</strong>. Compilare solo se mysql non viene trovato dall\'utente del server Web tramite il percorso standard.',
+
+  'MODULE_' . $modulname . '_GZIP_PATH_TITLE' => 'Percorso di gzip',
+  'MODULE_' . $modulname . '_GZIP_PATH_DESC'  => 'Percorso opzionale del programma gzip. Il valore standard &egrave; <strong>gzip</strong>. Modificare solo se gzip non viene trovato dall\'utente del server web.',
+
+  'MODULE_' . $modulname . '_DB_HOST_TITLE' => 'Host database per strumenti CLI',
+  'MODULE_' . $modulname . '_DB_HOST_DESC'  => 'Host database opzionale solo per mysqldump/mysql. Vuoto = valore di <strong>DB_SERVER</strong>. Impostare solo se gli strumenti CLI richiedono un host diverso rispetto al negozio.',
+
+  'MODULE_' . $modulname . '_DB_PORT_TITLE' => 'Porta database per strumenti CLI',
+  'MODULE_' . $modulname . '_DB_PORT_DESC'  => 'Porta database opzionale per mysqldump/mysql. Vuoto = porta standard o porta letta da DB_SERVER se DB_SERVER usa host:port. Compilare solo in caso di porta MySQL/MariaDB diversa.',
+
+  'MODULE_' . $modulname . '_DB_SOCKET_TITLE' => 'Socket database per strumenti CLI',
+  'MODULE_' . $modulname . '_DB_SOCKET_DESC'  => 'Socket MySQL/MariaDB opzionale per mysqldump/mysql. Impostare solo se il server deve essere raggiunto tramite socket. In questo caso TCP non viene forzato.',
+
+  'MODULE_' . $modulname . '_DB_FORCE_TCP_TITLE' => 'Forza connessione TCP',
+  'MODULE_' . $modulname . '_DB_FORCE_TCP_DESC'  => 'Usare <strong>--protocol=TCP</strong> per mysqldump/mysql? Consigliato quando il database deve essere raggiunto tramite TCP/IP invece che tramite socket locale, ad esempio con una porta diversa.',
+
   'MODULE_' . $modulname . '_WRITE_LOG_TITLE' => 'Scrivi file di log',
-  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Le azioni degli strumenti database MITS devono essere salvate nella cartella log del negozio? Il file di log si chiama <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
+  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Registrare backup, attivit&agrave; pianificate, ripristini e strumenti database nella cartella log del negozio? Il file di log si chiama <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_TITLE' => 'HTTP Basic Auth per chiamate cURL interne',
+  'MODULE_' . $modulname . '_HTTP_AUTH_DESC'  => 'Attivare se il negozio &egrave; protetto tramite <strong>.htaccess / HTTP Basic Auth</strong>. Queste credenziali vengono utilizzate esclusivamente dall\'attivit&agrave; pianificata modified per la chiamata interna al callback. I servizi cron esterni devono inviare HTTP Basic Auth separatamente.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_USER_TITLE' => 'Nome utente HTTP Basic Auth',
+  'MODULE_' . $modulname . '_HTTP_AUTH_USER_DESC'  => 'Nome utente opzionale per la protezione HTTP Basic Auth. Necessario solo quando HTTP Basic Auth per le chiamate cURL interne &egrave; attivato.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_PASS_TITLE' => 'Password HTTP Basic Auth',
+  'MODULE_' . $modulname . '_HTTP_AUTH_PASS_DESC'  => 'Password opzionale per la protezione HTTP Basic Auth. Viene salvata cifrata nel database e non viene mai scritta negli URL o nei log. In caso di trasferimento del negozio su un altro server, conservare anche <strong>includes/local/mits_cdb_sync_key.php</strong>.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_ENCRYPT_ERROR' => 'La password HTTP Basic Auth non ha potuto essere cifrata in modo sicuro e quindi non &egrave; stata salvata.',
+  'MODULE_' . $modulname . '_HTTP_AUTH_DECRYPT_ERROR' => 'La password HTTP Basic Auth salvata non pu&ograve; essere decifrata. Inserire nuovamente la password e salvare.',
 
   'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Invia backup database via e-mail',
   'MODULE_' . $modulname . '_SENDMAIL_DESC'  => 'Il backup del database deve essere inviato via e-mail?',

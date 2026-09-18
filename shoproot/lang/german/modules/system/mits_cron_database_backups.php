@@ -93,8 +93,42 @@ $lang_array = array(
   'MODULE_' . $modulname . '_BACKUP_MODE_TITLE' => 'Backup-Modus',
   'MODULE_' . $modulname . '_BACKUP_MODE_DESC'  => '<strong>single</strong> erstellt eine SQL-/SQL.GZ-Datei f&uuml;r die komplette Datenbank. <strong>tables</strong> erstellt einen eigenen Backupordner mit einer SQL.GZ-Datei pro Tabelle.',
 
+
+  'MODULE_' . $modulname . '_MYSQLDUMP_PATH_TITLE' => 'Pfad zu mysqldump',
+  'MODULE_' . $modulname . '_MYSQLDUMP_PATH_DESC'  => 'Optionaler Pfad zum mysqldump-Programm. Standard ist <strong>mysqldump</strong>. Nur ausf&uuml;llen, wenn mysqldump vom Webserver-Benutzer nicht &uuml;ber den Standardpfad gefunden wird.',
+
+  'MODULE_' . $modulname . '_MYSQL_PATH_TITLE' => 'Pfad zu mysql',
+  'MODULE_' . $modulname . '_MYSQL_PATH_DESC'  => 'Optionaler Pfad zum mysql-Programm f&uuml;r R&uuml;cksicherungen. Standard ist <strong>mysql</strong>. Nur ausf&uuml;llen, wenn mysql vom Webserver-Benutzer nicht &uuml;ber den Standardpfad gefunden wird.',
+
+  'MODULE_' . $modulname . '_GZIP_PATH_TITLE' => 'Pfad zu gzip',
+  'MODULE_' . $modulname . '_GZIP_PATH_DESC'  => 'Optionaler Pfad zum gzip-Programm. Standard ist <strong>gzip</strong>. Leer lassen oder nur &auml;ndern, wenn gzip vom Webserver-Benutzer nicht gefunden wird.',
+
+  'MODULE_' . $modulname . '_DB_HOST_TITLE' => 'Datenbank-Host f&uuml;r CLI-Tools',
+  'MODULE_' . $modulname . '_DB_HOST_DESC'  => 'Optionaler Datenbank-Host nur f&uuml;r mysqldump/mysql. Leer = Wert aus <strong>DB_SERVER</strong>. Nur setzen, wenn die CLI-Tools einen anderen Host ben&ouml;tigen als der Shop.',
+
+  'MODULE_' . $modulname . '_DB_PORT_TITLE' => 'Datenbank-Port f&uuml;r CLI-Tools',
+  'MODULE_' . $modulname . '_DB_PORT_DESC'  => 'Optionaler Datenbank-Port f&uuml;r mysqldump/mysql. Leer = Standardport bzw. Port aus DB_SERVER, falls DB_SERVER im Format host:port gesetzt wurde. Nur bei abweichendem MySQL/MariaDB-Port ausf&uuml;llen.',
+
+  'MODULE_' . $modulname . '_DB_SOCKET_TITLE' => 'Datenbank-Socket f&uuml;r CLI-Tools',
+  'MODULE_' . $modulname . '_DB_SOCKET_DESC'  => 'Optionaler MySQL/MariaDB-Socket f&uuml;r mysqldump/mysql. Nur setzen, wenn der Server ausdr&uuml;cklich per Socket angesprochen werden soll. Bei gesetztem Socket wird TCP nicht erzwungen.',
+
+  'MODULE_' . $modulname . '_DB_FORCE_TCP_TITLE' => 'TCP-Verbindung erzwingen',
+  'MODULE_' . $modulname . '_DB_FORCE_TCP_DESC'  => 'Soll f&uuml;r mysqldump/mysql <strong>--protocol=TCP</strong> verwendet werden? Empfehlenswert, wenn die Datenbank per TCP/IP und nicht per lokalem Socket angesprochen werden soll, z.B. bei abweichendem Port.',
+
   'MODULE_' . $modulname . '_WRITE_LOG_TITLE' => 'Logdateien schreiben',
-  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Sollen Aktionen der MITS Datenbank-Werkzeuge im Shop-Logordner protokolliert werden? Die Logdatei hei&szlig;t <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
+  'MODULE_' . $modulname . '_WRITE_LOG_DESC'  => 'Sollen Backups, geplante Aufgaben, R&uuml;cksicherungen und Datenbank-Werkzeuge im Shop-Logordner protokolliert werden? Die Logdatei hei&szlig;t <strong>mits_cron_database_backups_YYYY-MM.log</strong>.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_TITLE' => 'HTTP-Basic-Auth f&uuml;r interne cURL-Aufrufe',
+  'MODULE_' . $modulname . '_HTTP_AUTH_DESC'  => 'Aktivieren, wenn der Shop z.B. per <strong>.htaccess / HTTP Basic Auth</strong> gesch&uuml;tzt ist. Die Zugangsdaten werden ausschlie&szlig;lich vom modified Scheduled Task f&uuml;r den internen Aufruf der Callback-URL verwendet. Externe Cron-Dienste m&uuml;ssen HTTP Basic Auth separat mitsenden.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_USER_TITLE' => 'HTTP-Basic-Auth Benutzername',
+  'MODULE_' . $modulname . '_HTTP_AUTH_USER_DESC'  => 'Optionaler Benutzername der HTTP-Basic-Auth-Sperre. Nur erforderlich, wenn <strong>HTTP-Basic-Auth f&uuml;r interne cURL-Aufrufe</strong> aktiviert ist.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_PASS_TITLE' => 'HTTP-Basic-Auth Passwort',
+  'MODULE_' . $modulname . '_HTTP_AUTH_PASS_DESC'  => 'Optionales Passwort der HTTP-Basic-Auth-Sperre. Das Passwort wird verschl&uuml;sselt in der Datenbank gespeichert und weder in URLs noch in Logdateien ausgegeben. Der lokale Schl&uuml;ssel unter <strong>includes/local/mits_cdb_sync_key.php</strong> muss bei einem Serverumzug mit &uuml;bernommen werden.',
+
+  'MODULE_' . $modulname . '_HTTP_AUTH_ENCRYPT_ERROR' => 'Das HTTP-Basic-Auth-Passwort konnte nicht sicher verschl&uuml;sselt werden und wurde deshalb nicht gespeichert.',
+  'MODULE_' . $modulname . '_HTTP_AUTH_DECRYPT_ERROR' => 'Das gespeicherte HTTP-Basic-Auth-Passwort kann nicht entschl&uuml;sselt werden. Bitte das Passwort neu eingeben und speichern.',
 
   'MODULE_' . $modulname . '_SENDMAIL_TITLE' => 'Datenbanksicherung per E-Mail versenden',
   'MODULE_' . $modulname . '_SENDMAIL_DESC'  => 'Soll die Datenbanksicherung per E-Mail versendet werden?',
