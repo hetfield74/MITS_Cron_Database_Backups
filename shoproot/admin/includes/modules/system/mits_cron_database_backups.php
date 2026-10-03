@@ -36,7 +36,7 @@ class mits_cron_database_backups
     {
         $this->code = 'mits_cron_database_backups';
         $this->name = 'MODULE_' . strtoupper($this->code);
-        $this->version = '1.8.5';
+        $this->version = '1.8.6';
         $this->sort_order = defined($this->name . '_SORT_ORDER') ? constant($this->name . '_SORT_ORDER') : 0;
         $this->enabled = defined($this->name . '_STATUS') && (constant($this->name . '_STATUS') == 'true');
         $this->default_columns = 'configuration_key, configuration_value, configuration_group_id, sort_order, set_function';
@@ -74,6 +74,13 @@ class mits_cron_database_backups
             $this->installAdminToolsAccess();
             $this->installAdminSyncAccess();
             $this->installSyncProfilesTable();
+        }
+
+        $mitsUpdateClientFile = DIR_FS_CATALOG . 'includes/external/mits_module_update_client/MitsModuleUpdateClient.php';
+
+        if (is_file($mitsUpdateClientFile)) {
+            require_once $mitsUpdateClientFile;
+            MitsModuleUpdateClient::integrate($this);
         }
     }
 
