@@ -60,10 +60,6 @@ $lang_array = array(
         <li>Eliminar autom&aacute;ticamente copias antiguas despu&eacute;s de x d&iacute;as</li>
         <li>Eliminar autom&aacute;ticamente archivos LOG antiguos de tipo mod_notice, mod_deprecated y mod_strict despu&eacute;s de x d&iacute;as</li>
       </ul>
-      <div style="text-align:center;">
-        <small>La versi&oacute;n m&aacute;s reciente del m&oacute;dulo est&aacute; siempre disponible en GitHub.</small><br />
-        <a style="background:#6a9;color:#444" target="_blank" href="https://github.com/hetfield74/MITS_Cron_Database_Backups" class="button" onclick="this.blur();">MITS_Cron_Database_Backups on GitHub</a>
-      </div>
       <p>Para preguntas, problemas o solicitudes sobre este m&oacute;dulo o sobre la modified eCommerce Shopsoftware, contacte con nosotros:</p>
       <div style="text-align:center;"><a style="background:#6a9;color:#444" target="_blank" href="https://www.merz-it-service.de/Kontakt.html" class="button" onclick="this.blur();">P&aacute;gina de contacto en MerZ-IT-SerVice.de</a></div>
     </div>

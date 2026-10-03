@@ -60,10 +60,6 @@ $lang_array = array(
         <li>Oude databaseback-ups optioneel automatisch na x dagen verwijderen</li>
         <li>Oude LOG-bestanden van het type mod_notice, mod_deprecated en mod_strict optioneel automatisch na x dagen verwijderen</li>
       </ul>
-      <div style="text-align:center;">
-        <small>De nieuwste versie van de module is altijd beschikbaar op GitHub.</small><br />
-        <a style="background:#6a9;color:#444" target="_blank" href="https://github.com/hetfield74/MITS_Cron_Database_Backups" class="button" onclick="this.blur();">MITS_Cron_Database_Backups on GitHub</a>
-      </div>
       <p>Neem voor vragen, problemen of wensen over deze module of andere zaken rond de modified eCommerce Shopsoftware contact met ons op:</p>
       <div style="text-align:center;"><a style="background:#6a9;color:#444" target="_blank" href="https://www.merz-it-service.de/Kontakt.html" class="button" onclick="this.blur();">Contactpagina op MerZ-IT-SerVice.de</a></div>
     </div>

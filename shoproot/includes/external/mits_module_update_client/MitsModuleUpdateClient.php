@@ -11,7 +11,7 @@
 
 class MitsModuleUpdateClient
 {
-    public const VERSION = '0.1.6';
+    public const VERSION = '0.1.8';
     public const DEFAULT_ENDPOINT = 'https://www.merz-it-service.de/api/mits_module_update.php';
 
     public static function check(string $moduleKey, string $installedVersion, array $options = array()): array
@@ -170,24 +170,28 @@ class MitsModuleUpdateClient
                 . '<div><strong>Versionsprüfung derzeit nicht möglich.</strong>' . $meta . '</div>' . $refresh . '</div>';
         }
 
+        $productUrl = self::safeUrl((string)($result['product_url'] ?? ''));
+        $productLink = $productUrl !== ''
+            ? '<a class="button" style="white-space:nowrap" rel="noopener noreferrer" target="_blank" href="' . self::h($productUrl) . '">Modulseite öffnen</a>'
+            : '';
+
         if (!empty($result['update_available'])) {
-            $url = (string)($result['download_url'] ?: $result['account_url'] ?: $result['product_url']);
-            $details = $url !== ''
-                ? ' <a rel="noopener noreferrer" target="_blank" href="' . self::h($url) . '">Details / Download</a>'
+            $updateLink = $productUrl !== ''
+                ? '<a class="button but_green" style="white-space:nowrap" rel="noopener noreferrer" target="_blank" href="' . self::h($productUrl) . '">Neue Version ansehen / herunterladen</a>'
                 : '';
             return '<div class="mits-update-notice mits-update-notice--update" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:8px 0;border:1px solid #ead9a6;border-left:4px solid #d5a100;background:#fff9e8;color:#5d4800">'
                 . '<div><strong>Neue Version ' . $latest . ' verfügbar.</strong>'
-                . ($installed !== '' ? '<div style="margin-top:3px">Installiert: ' . $installed . $details . '</div>' : $details)
-                . $meta . '</div>' . $refresh . '</div>';
+                . ($installed !== '' ? '<div style="margin-top:3px">Installiert: ' . $installed . '</div>' : '')
+                . $meta . '</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' . $updateLink . $refresh . '</div></div>';
         }
 
         if ($latest !== '' && $installed !== '' && version_compare((string)$result['installed_version'], (string)$result['latest_version'], '>')) {
             return '<div class="mits-update-notice mits-update-notice--ahead" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:8px 0;border:1px solid #b9d8e8;border-left:4px solid #3786ad;background:#eef8fd;color:#1e566f">'
-                . '<div><strong>Ihre Version ' . $installed . ' ist neuer als die veröffentlichte Version ' . $latest . '.</strong>' . $meta . '</div>' . $refresh . '</div>';
+                . '<div><strong>Ihre Version ' . $installed . ' ist neuer als die veröffentlichte Version ' . $latest . '.</strong>' . $meta . '</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' . $productLink . $refresh . '</div></div>';
         }
 
         return '<div class="mits-update-notice mits-update-notice--current" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:8px 0;border:1px solid #b9ddcf;border-left:4px solid #329779;background:#effaf6;color:#165f4e">'
-            . '<div><strong>Ihre Version ' . $installed . ' ist aktuell.</strong>' . $meta . '</div>' . $refresh . '</div>';
+            . '<div><strong>Ihre Version ' . $installed . ' ist aktuell.</strong>' . $meta . '</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' . $productLink . $refresh . '</div></div>';
     }
 
     private static function manualRefreshRequested(string $moduleKey, array $options): bool

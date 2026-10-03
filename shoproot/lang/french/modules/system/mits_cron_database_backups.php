@@ -60,10 +60,6 @@ $lang_array = array(
         <li>Supprimer automatiquement les anciennes sauvegardes apr&egrave;s x jours en option</li>
         <li>Supprimer automatiquement les anciens fichiers LOG de type mod_notice, mod_deprecated et mod_strict apr&egrave;s x jours en option</li>
       </ul>
-      <div style="text-align:center;">
-        <small>La derni&egrave;re version du module est toujours disponible sur GitHub.</small><br />
-        <a style="background:#6a9;color:#444" target="_blank" href="https://github.com/hetfield74/MITS_Cron_Database_Backups" class="button" onclick="this.blur();">MITS_Cron_Database_Backups on GitHub</a>
-      </div>
       <p>Pour toute question, probl&egrave;me ou demande concernant ce module ou la boutique modified eCommerce, contactez-nous simplement :</p>
       <div style="text-align:center;"><a style="background:#6a9;color:#444" target="_blank" href="https://www.merz-it-service.de/Kontakt.html" class="button" onclick="this.blur();">Page de contact sur MerZ-IT-SerVice.de</a></div>
     </div>

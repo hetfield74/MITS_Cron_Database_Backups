@@ -60,10 +60,6 @@ $lang_array = array(
         <li>Eliminazione automatica opzionale dei vecchi backup dopo x giorni</li>
         <li>Eliminazione automatica opzionale dei vecchi file LOG di tipo mod_notice, mod_deprecated e mod_strict dopo x giorni</li>
       </ul>
-      <div style="text-align:center;">
-        <small>La versione pi&ugrave; recente del modulo &egrave; sempre disponibile su GitHub.</small><br />
-        <a style="background:#6a9;color:#444" target="_blank" href="https://github.com/hetfield74/MITS_Cron_Database_Backups" class="button" onclick="this.blur();">MITS_Cron_Database_Backups on GitHub</a>
-      </div>
       <p>Per domande, problemi o richieste relative a questo modulo o alla modified eCommerce Shopsoftware, contattateci:</p>
       <div style="text-align:center;"><a style="background:#6a9;color:#444" target="_blank" href="https://www.merz-it-service.de/Kontakt.html" class="button" onclick="this.blur();">Pagina contatti su MerZ-IT-SerVice.de</a></div>
     </div>

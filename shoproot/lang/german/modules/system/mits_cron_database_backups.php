@@ -59,10 +59,6 @@ $lang_array = array(
         <li>Optional alte Datenbanksicherungen automatisch nach x Tagen l&ouml;schen</li>
         <li>Optional alte LOG-Files vom Typ mod_notice, mod_deprecated und mod_strict des Shops automatisch nach x Tagen l&ouml;schen</li>
       </ul>
-      <div style="text-align:center;">
-        <small>Nur auf Github gibt es immer die aktuellste Version des Moduls!</small><br />
-        <a style="background:#6a9;color:#444" target="_blank" href="https://github.com/hetfield74/MITS_Cron_Database_Backups" class="button" onclick="this.blur();">MITS_Cron_Database_Backups on Github</a>
-      </div>
       <p>Bei Fragen, Problemen oder W&uuml;nschen zu diesem Modul oder auch zu anderen Anliegen rund um die modified eCommerce Shopsoftware nehmen Sie einfach Kontakt zu uns auf:</p>
       <div style="text-align:center;"><a style="background:#6a9;color:#444" target="_blank" href="https://www.merz-it-service.de/Kontakt.html" class="button" onclick="this.blur();">Kontaktseite auf MerZ-IT-SerVice.de</a></div>
     </div>

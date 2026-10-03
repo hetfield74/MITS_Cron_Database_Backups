@@ -60,10 +60,6 @@ $lang_array = array(
         <li>Optionally delete old database backups automatically after x days</li>
         <li>Optionally delete old shop log files of type mod_notice, mod_deprecated and mod_strict after x days</li>
       </ul>
-      <div style="text-align:center;">
-        <small>The latest module version is always available on GitHub.</small><br />
-        <a style="background:#6a9;color:#444" target="_blank" href="https://github.com/hetfield74/MITS_Cron_Database_Backups" class="button" onclick="this.blur();">MITS_Cron_Database_Backups on GitHub</a>
-      </div>
       <p>For questions, problems or feature requests about this module, or for any other topics related to the modified eCommerce shopsoftware, please contact us:</p>
       <div style="text-align:center;"><a style="background:#6a9;color:#444" target="_blank" href="https://www.merz-it-service.de/Kontakt.html" class="button" onclick="this.blur();">Contact MerZ-IT-SerVice.de</a></div>
     </div>
