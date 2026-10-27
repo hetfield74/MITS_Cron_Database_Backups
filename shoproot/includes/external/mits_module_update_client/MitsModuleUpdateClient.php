@@ -1,17 +1,20 @@
 <?php
-/**
- * Lightweight update checker for MITS modules.
+/*
+ * --------------------------------------------------------------
+ * File: MitsModuleUpdateClient.php
  *
- * Copy this class into the target shop once and let individual modules call
- * MitsModuleUpdateClient::check($moduleKey, $installedVersion).
+ * Author: Hetfield / MerZ IT-SerVice
+ * Copyright: (c) 2026 - MerZ IT-SerVice
+ * Web: https://www.merz-it-service.de
+ * Contact: info@merz-it-service.de
  *
- * The client only reads public release metadata. It never installs files and
- * never sends customer, order or shop data.
+ * Released under the GNU General Public License
+ * --------------------------------------------------------------
  */
 
 class MitsModuleUpdateClient
 {
-    public const VERSION = '0.1.8';
+    public const VERSION = '0.2.2';
     public const DEFAULT_ENDPOINT = 'https://www.merz-it-service.de/api/mits_module_update.php';
 
     public static function check(string $moduleKey, string $installedVersion, array $options = array()): array
@@ -88,18 +91,19 @@ class MitsModuleUpdateClient
         $result['size'] = max(0, (int)($latest['size'] ?? 0));
         $notes = (string)($latest['notes'] ?? '');
         $result['notes'] = function_exists('mb_substr') ? mb_substr($notes, 0, 20000) : substr($notes, 0, 20000);
+        $moduleCompat = isset($payload['compatibility']) && is_array($payload['compatibility']) ? $payload['compatibility'] : array();
+        $latestCompat = isset($latest['compatibility']) && is_array($latest['compatibility']) ? $latest['compatibility'] : array();
+        $mode = (string)($latestCompat['mode'] ?? 'undocumented');
+        $result['compatibility_mode'] = in_array($mode, array('undocumented','inherit','explicit'), true) ? $mode : 'undocumented';
+        $useRelease = $result['compatibility_mode'] !== 'undocumented';
+        $result['compatibility_source'] = $useRelease ? 'release' : 'module_general';
+        $source = $useRelease ? $latestCompat : $moduleCompat;
+        $result['supported_shop_versions'] = self::stringList($source['shop_versions'] ?? array());
+        $result['supported_shop_labels'] = self::stringList($source['shop_labels'] ?? array());
+        $result['supported_php_versions'] = self::stringList($source['php_versions'] ?? array());
         return $result;
     }
 
-    /**
-     * One-call integration for classic modified system modules.
-     *
-     * Expected public properties on $module:
-     *   code, version, title and description.
-     *
-     * The method never throws an update-check exception to the calling module.
-     * It returns the same result array as check() for optional diagnostics.
-     */
     public static function integrate($module, array $options = array()): array
     {
         $moduleKey = '';
@@ -125,6 +129,7 @@ class MitsModuleUpdateClient
             }
 
             $result = self::check($moduleKey, $installedVersion, $checkOptions);
+            $result = self::evaluateCompatibility($result, isset($options['shop_version']) ? (string)$options['shop_version'] : '');
             $result['refresh_url'] = self::manualRefreshUrl($moduleKey, (int)($result['last_checked_at'] ?? 0));
 
             $showTitle = !array_key_exists('show_title_badge', $options) || (bool)$options['show_title_badge'];
@@ -164,6 +169,7 @@ class MitsModuleUpdateClient
             ? '<a class="button" style="margin-left:10px;white-space:nowrap" href="' . self::h($refreshUrl) . '">Jetzt auf Updates prüfen</a>'
             : '';
         $meta = $checked !== '' ? '<div style="margin-top:4px;font-size:11px;opacity:.78">Zuletzt geprüft: ' . self::h($checked) . '</div>' : '';
+        $compatibility = self::compatibilityHtml($result);
 
         if (empty($result['ok'])) {
             return '<div class="mits-update-notice mits-update-notice--error" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:8px 0;border:1px solid #d7dce0;border-left:4px solid #7a858e;background:#f7f8f9;color:#39444c">'
@@ -176,22 +182,23 @@ class MitsModuleUpdateClient
             : '';
 
         if (!empty($result['update_available'])) {
+            $incompatible = (($result['php_supported'] ?? null) === false) || (($result['shop_supported'] ?? null) === false);
             $updateLink = $productUrl !== ''
                 ? '<a class="button but_green" style="white-space:nowrap" rel="noopener noreferrer" target="_blank" href="' . self::h($productUrl) . '">Neue Version ansehen / herunterladen</a>'
                 : '';
             return '<div class="mits-update-notice mits-update-notice--update" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:8px 0;border:1px solid #ead9a6;border-left:4px solid #d5a100;background:#fff9e8;color:#5d4800">'
-                . '<div><strong>Neue Version ' . $latest . ' verfügbar.</strong>'
+                . '<div><strong>' . ($incompatible ? 'Neue Version ' . $latest . ' verfügbar – Umgebung prüfen.' : 'Neue Version ' . $latest . ' verfügbar.') . '</strong>'
                 . ($installed !== '' ? '<div style="margin-top:3px">Installiert: ' . $installed . '</div>' : '')
-                . $meta . '</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' . $updateLink . $refresh . '</div></div>';
+                . $meta . $compatibility . '</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' . $updateLink . $refresh . '</div></div>';
         }
 
         if ($latest !== '' && $installed !== '' && version_compare((string)$result['installed_version'], (string)$result['latest_version'], '>')) {
             return '<div class="mits-update-notice mits-update-notice--ahead" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:8px 0;border:1px solid #b9d8e8;border-left:4px solid #3786ad;background:#eef8fd;color:#1e566f">'
-                . '<div><strong>Ihre Version ' . $installed . ' ist neuer als die veröffentlichte Version ' . $latest . '.</strong>' . $meta . '</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' . $productLink . $refresh . '</div></div>';
+                . '<div><strong>Ihre Version ' . $installed . ' ist neuer als die veröffentlichte Version ' . $latest . '.</strong>' . $meta . $compatibility . '</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' . $productLink . $refresh . '</div></div>';
         }
 
         return '<div class="mits-update-notice mits-update-notice--current" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:8px 0;border:1px solid #b9ddcf;border-left:4px solid #329779;background:#effaf6;color:#165f4e">'
-            . '<div><strong>Ihre Version ' . $installed . ' ist aktuell.</strong>' . $meta . '</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' . $productLink . $refresh . '</div></div>';
+            . '<div><strong>Ihre Version ' . $installed . ' ist aktuell.</strong>' . $meta . $compatibility . '</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' . $productLink . $refresh . '</div></div>';
     }
 
     private static function manualRefreshRequested(string $moduleKey, array $options): bool
@@ -410,11 +417,70 @@ class MitsModuleUpdateClient
             'sha256' => '',
             'size' => 0,
             'notes' => '',
+            'compatibility_mode' => 'undocumented',
+            'compatibility_source' => '',
+            'supported_shop_versions' => array(),
+            'supported_shop_labels' => array(),
+            'supported_php_versions' => array(),
+            'local_php_version' => '',
+            'local_shop_version' => '',
+            'php_supported' => null,
+            'shop_supported' => null,
             'from_cache' => false,
             'last_checked_at' => 0,
             'refresh_url' => '',
             'error' => '',
         );
+    }
+
+    private static function stringList($value): array
+    {
+        if (!is_array($value)) return array();
+        $out=array();foreach($value as $item){if(!is_scalar($item))continue;$item=trim((string)$item);if($item!==''&&!in_array($item,$out,true))$out[]=$item;}return $out;
+    }
+
+    private static function evaluateCompatibility(array $result, string $shopVersionOverride = ''): array
+    {
+        $php=self::majorMinor(PHP_VERSION);$shop=$shopVersionOverride!==''?self::extractNumericVersion($shopVersionOverride):self::detectShopVersion();
+        $result['local_php_version']=$php;$result['local_shop_version']=$shop;
+        $phpSupported=self::matchesSupported($php,$result['supported_php_versions']??array(),true);
+        $shopSupported=$shop!==''?self::matchesSupported($shop,$result['supported_shop_versions']??array(),false):null;
+        $result['php_supported']=$phpSupported;$result['shop_supported']=$shopSupported;return $result;
+    }
+
+    private static function majorMinor(string $value): string
+    {
+        return preg_match('/(\d+)\.(\d+)/',$value,$m)?$m[1].'.'.$m[2]:'';
+    }
+
+    private static function extractNumericVersion(string $value): string
+    {
+        return preg_match('/(\d+\.\d+(?:\.\d+)?)/',$value,$m)?$m[1]:'';
+    }
+
+    private static function detectShopVersion(): string
+    {
+        foreach(array('PROJECT_VERSION_NO','MODIFIED_SHOP_VERSION','MODIFIED_VERSION','SHOP_VERSION','PROJECT_VERSION') as $constant){if(defined($constant)){ $v=self::extractNumericVersion((string)constant($constant)); if($v!=='')return $v; }}
+        foreach(array('modified_shop_version','shop_version','project_version') as $global){if(isset($GLOBALS[$global])){$v=self::extractNumericVersion((string)$GLOBALS[$global]);if($v!=='')return $v;}}
+        return '';
+    }
+
+    private static function matchesSupported(string $local, array $supported, bool $majorMinor): ?bool
+    {
+        if($local===''||!$supported)return null;
+        foreach($supported as $candidate){$candidate=$majorMinor?self::majorMinor((string)$candidate):self::extractNumericVersion((string)$candidate);if($candidate!==''&&version_compare($local,$candidate,'=='))return true;}
+        return false;
+    }
+
+    private static function compatibilityHtml(array $result): string
+    {
+        $parts=array();$php=(string)($result['local_php_version']??'');$phpList=$result['supported_php_versions']??array();
+        if($php!==''&&is_array($phpList)&&$phpList){$ok=$result['php_supported']??null;$parts[]='<span><b>PHP '.$php.'</b> '.($ok===true?'✓':'✗').' <small>(unterstützt: '.self::h(implode(', ',$phpList)).')</small></span>';}
+        $shop=(string)($result['local_shop_version']??'');$shopLabels=$result['supported_shop_labels']??array();$shopList=$result['supported_shop_versions']??array();
+        if(is_array($shopList)&&$shopList){if($shop!==''){$ok=$result['shop_supported']??null;$parts[]='<span><b>modified '.$shop.'</b> '.($ok===true?'✓':'✗').' <small>(unterstützt: '.self::h(implode(', ',is_array($shopLabels)&&$shopLabels?$shopLabels:$shopList)).')</small></span>';}else{$parts[]='<span><b>modified-Version:</b> nicht automatisch erkannt <small>(unterstützt: '.self::h(implode(', ',is_array($shopLabels)&&$shopLabels?$shopLabels:$shopList)).')</small></span>';}}
+        if(!$parts)return '';
+        $source=(string)($result['compatibility_source']??'');$note=$source==='module_general'?'<div style="margin-top:3px;font-size:11px;opacity:.78">Release-Kompatibilität nicht separat dokumentiert; Anzeige nach Modulstandard.</div>':'';
+        return '<div style="display:flex;gap:5px 12px;flex-wrap:wrap;margin-top:6px;font-size:12px">'.implode('',$parts).'</div>'.$note;
     }
 
     private static function h(string $value): string
