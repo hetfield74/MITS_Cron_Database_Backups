@@ -2388,6 +2388,17 @@ require(DIR_WS_INCLUDES . 'head.php');
       </div>
     </details>
 
+    <details class="mits-card"<?php echo $activeTool === 'newsletter' ? ' open' : ''; ?>>
+      <summary><h2><?php echo mits_cdb_tools_text('newsletter_title'); ?></h2><p class="mits-card__sub"><?php echo mits_cdb_tools_text('newsletter_sub'); ?></p></summary>
+      <div class="mits-card__body">
+          <?php echo xtc_draw_form('mits_newsletter', 'mits_cron_database_tools.php', '', 'post'); ?><?php echo mits_cdb_tools_hidden('newsletter'); ?>
+        <label class="mits-check"><input type="checkbox" name="newsletter_history" value="1"<?php echo ($activeTool==='newsletter' && (string)mits_cdb_tools_post('newsletter_history','')==='1')?' checked':''; ?>> <?php echo mits_cdb_tools_text('newsletter_history'); ?></label>
+        <div class="mits-tools__actions"><button class="mits-button" type="submit" name="run_mode" value="preview"><?php echo mits_cdb_tools_text('common_preview'); ?></button></div>
+        <div class="mits-live"><label class="mits-check"><input type="checkbox" name="backup_confirmed" value="1"> <?php echo mits_cdb_tools_text('common_backup_confirmed'); ?></label><div class="mits-field"><label><?php echo mits_cdb_tools_text('common_confirm_exact'); ?> <code><?php echo mits_cdb_tools_html(mits_cdb_tools_text('confirm_delete')); ?></code></label><input class="mits-input" type="text" name="confirm_text" autocomplete="off"></div><button class="mits-button mits-button--danger" type="submit" name="run_mode" value="live" data-confirm="<?php echo mits_cdb_tools_html(mits_cdb_tools_text('newsletter_confirm')); ?>" onclick="return confirm(this.getAttribute('data-confirm')); "><?php echo mits_cdb_tools_text('newsletter_delete'); ?></button></div>
+        </form>
+      </div>
+    </details>
+
     <details class="mits-card mits-expert"<?php echo $activeTool === 'replace_content' ? ' open' : ''; ?>>
       <summary><h2><?php echo mits_cdb_tools_text('replace_title'); ?></h2><p class="mits-card__sub"><?php echo mits_cdb_tools_text('replace_sub'); ?></p></summary>
       <div class="mits-card__body">
@@ -2403,17 +2414,6 @@ require(DIR_WS_INCLUDES . 'head.php');
           <?php if ($imageSliderToolsAvailable) { ?><label class="mits-check"><input type="checkbox" name="replace_imageslider" value="1"<?php echo ($activeTool==='replace_content' && (string)mits_cdb_tools_post('replace_imageslider','')==='1')?' checked':''; ?>> <?php echo mits_cdb_tools_text('replace_imageslider'); ?></label><?php } ?>
           <div class="mits-tools__actions"><button class="mits-button" type="submit" name="run_mode" value="preview"><?php echo mits_cdb_tools_text('common_preview'); ?></button></div>
           <div class="mits-live"><label class="mits-check"><input type="checkbox" name="backup_confirmed" value="1"> <?php echo mits_cdb_tools_text('common_backup_confirmed'); ?></label><div class="mits-field"><label><?php echo mits_cdb_tools_text('common_confirm_exact'); ?> <code><?php echo mits_cdb_tools_html(mits_cdb_tools_text('confirm_replace')); ?></code></label><input class="mits-input" type="text" name="confirm_text" autocomplete="off"></div><button class="mits-button mits-button--danger" type="submit" name="run_mode" value="live" data-confirm="<?php echo mits_cdb_tools_html(mits_cdb_tools_text('replace_confirm')); ?>" onclick="return confirm(this.getAttribute('data-confirm')); "><?php echo mits_cdb_tools_text('replace_button'); ?></button></div>
-        </form>
-      </div>
-    </details>
-
-    <details class="mits-card"<?php echo $activeTool === 'newsletter' ? ' open' : ''; ?>>
-      <summary><h2><?php echo mits_cdb_tools_text('newsletter_title'); ?></h2><p class="mits-card__sub"><?php echo mits_cdb_tools_text('newsletter_sub'); ?></p></summary>
-      <div class="mits-card__body">
-        <?php echo xtc_draw_form('mits_newsletter', 'mits_cron_database_tools.php', '', 'post'); ?><?php echo mits_cdb_tools_hidden('newsletter'); ?>
-          <label class="mits-check"><input type="checkbox" name="newsletter_history" value="1"<?php echo ($activeTool==='newsletter' && (string)mits_cdb_tools_post('newsletter_history','')==='1')?' checked':''; ?>> <?php echo mits_cdb_tools_text('newsletter_history'); ?></label>
-          <div class="mits-tools__actions"><button class="mits-button" type="submit" name="run_mode" value="preview"><?php echo mits_cdb_tools_text('common_preview'); ?></button></div>
-          <div class="mits-live"><label class="mits-check"><input type="checkbox" name="backup_confirmed" value="1"> <?php echo mits_cdb_tools_text('common_backup_confirmed'); ?></label><div class="mits-field"><label><?php echo mits_cdb_tools_text('common_confirm_exact'); ?> <code><?php echo mits_cdb_tools_html(mits_cdb_tools_text('confirm_delete')); ?></code></label><input class="mits-input" type="text" name="confirm_text" autocomplete="off"></div><button class="mits-button mits-button--danger" type="submit" name="run_mode" value="live" data-confirm="<?php echo mits_cdb_tools_html(mits_cdb_tools_text('newsletter_confirm')); ?>" onclick="return confirm(this.getAttribute('data-confirm')); "><?php echo mits_cdb_tools_text('newsletter_delete'); ?></button></div>
         </form>
       </div>
     </details>
