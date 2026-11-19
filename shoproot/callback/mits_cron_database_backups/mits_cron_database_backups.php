@@ -225,7 +225,7 @@ function mits_cdb_backup_ensure_directory_protection($dir)
 {
     $dir = rtrim((string)$dir, '/\\') . DIRECTORY_SEPARATOR;
     if (!is_dir($dir)) {
-        @mkdir($dir, 0777, true);
+        @mkdir($dir, 0775, true);
     }
 
     if (!is_dir($dir) || !is_writable($dir)) {
@@ -252,8 +252,13 @@ Options -Indexes
 ";
 
     $current_htaccess = is_file($htaccess_file) ? (string)@file_get_contents($htaccess_file) : '';
-    if ($current_htaccess === '' || strpos($current_htaccess, $protection_check) === false) {
-        @file_put_contents($htaccess_file, rtrim($current_htaccess) . $htaccess_block, LOCK_EX);
+    if (is_link($htaccess_file)) {
+        return false;
+    }
+    if ($current_htaccess === '' || strpos($current_htaccess, $protection_check) === false || strpos($current_htaccess, 'Deny from all') === false) {
+        if (@file_put_contents($htaccess_file, rtrim($current_htaccess) . $htaccess_block, LOCK_EX) === false) {
+            return false;
+        }
         @chmod($htaccess_file, 0644);
     }
 
@@ -264,6 +269,9 @@ Options -Indexes
     }
 
     $web_config_file = $dir . 'web.config';
+    if (is_link($web_config_file)) {
+        return false;
+    }
     if (!is_file($web_config_file)) {
         $web_config = '<?xml version="1.0" encoding="UTF-8"?>' . "
 "
@@ -291,7 +299,17 @@ Options -Indexes
         @chmod($web_config_file, 0644);
     }
 
-    return is_file($htaccess_file) && is_file($index_file);
+    if (is_link($web_config_file)) {
+        return false;
+    }
+    $verified_htaccess = @file_get_contents($htaccess_file);
+    $verified_web_config = @file_get_contents($web_config_file);
+    return is_file($index_file)
+        && is_string($verified_htaccess)
+        && strpos($verified_htaccess, $protection_check) !== false
+        && strpos($verified_htaccess, 'Deny from all') !== false
+        && is_string($verified_web_config)
+        && strpos($verified_web_config, 'accessType="Deny"') !== false;
 }
 
 function mits_cdb_backup_comments_option()
@@ -599,7 +617,7 @@ if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS') && MODULE_MITS_CRON_DATA
         echo 'Kein Zugriff erlaubt!';
         exit;
     } else {
-        @ini_set('display_errors', 1);
+        @ini_set('display_errors', 0);
         @set_time_limit(0);
 
         $exec_enabled = function_exists('exec') && !in_array('exec', array_map('trim', explode(',', (string)ini_get('disable_functions')))) && strtolower((string)ini_get('safe_mode')) != 1;
@@ -612,15 +630,18 @@ if (defined('MODULE_MITS_CRON_DATABASE_BACKUPS_STATUS') && MODULE_MITS_CRON_DATA
 
         $module_backup_dir = DIR_FS_DOCUMENT_ROOT . 'export/mits_cron_database_backups';
         $admin_backup_dir = DIR_FS_DOCUMENT_ROOT . (defined('DIR_ADMIN') ? DIR_ADMIN : 'admin/') . 'backups';
-        mits_cdb_backup_ensure_directory_protection($module_backup_dir);
-
-        if (is_dir($module_backup_dir) && is_writable($module_backup_dir)) {
+        $module_backup_protected = mits_cdb_backup_ensure_directory_protection($module_backup_dir);
+        if ($module_backup_protected && is_writable($module_backup_dir)) {
             $dir = 'export/mits_cron_database_backups/';
-        } elseif (is_dir($admin_backup_dir) && is_writable($admin_backup_dir)) {
+        } elseif (is_dir($admin_backup_dir) && is_writable($admin_backup_dir)
+            && mits_cdb_backup_ensure_directory_protection($admin_backup_dir)) {
             $dir = (defined('DIR_ADMIN') ? DIR_ADMIN : 'admin/') . 'backups/';
             mits_cdb_backup_log('Primaerer Backup-Ordner nicht beschreibbar, Admin-Backupordner wird verwendet.', array('primary_dir' => mits_cdb_backup_path_info($module_backup_dir), 'fallback_dir' => mits_cdb_backup_path_info($admin_backup_dir)));
         } else {
-            $dir = 'export/mits_cron_database_backups/';
+            mits_cdb_backup_log('Backup abgebrochen: Verzeichnisschutz fehlt.');
+            http_response_code(500);
+            echo 'MITS_CDB_BACKUP_STORAGE_PROTECTION_FAILED';
+            exit;
         }
 
         $target_backup_dir = DIR_FS_DOCUMENT_ROOT . $dir;

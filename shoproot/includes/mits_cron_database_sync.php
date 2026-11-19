@@ -601,11 +601,7 @@ function mits_cdb_sync_temp_file($suffix)
         return false;
     }
 
-    try {
-        $random = bin2hex(random_bytes(12));
-    } catch (Exception $e) {
-        $random = md5(uniqid(mt_rand(), true));
-    }
+    $random = bin2hex(random_bytes(12));
     return $dir . 'mits_sync_' . $random . $suffix;
 }
 

@@ -160,10 +160,7 @@ function mits_cdb_tools_date($value)
 
 function mits_cdb_tools_make_token()
 {
-    if (function_exists('random_bytes')) {
-        return bin2hex(random_bytes(32));
-    }
-    return md5(uniqid(mt_rand(), true));
+    return bin2hex(random_bytes(32));
 }
 
 function mits_cdb_tools_token()

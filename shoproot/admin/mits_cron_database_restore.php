@@ -137,13 +137,7 @@ function mits_cdb_restore_exec_enabled()
 
 function mits_cdb_restore_make_token()
 {
-    if (function_exists('random_bytes')) {
-        return bin2hex(random_bytes(32));
-    }
-    if (function_exists('xtc_RandomString')) {
-        return xtc_RandomString(32);
-    }
-    return md5(uniqid(mt_rand(), true));
+    return bin2hex(random_bytes(32));
 }
 
 function mits_cdb_restore_ensure_token()

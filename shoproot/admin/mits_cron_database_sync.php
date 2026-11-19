@@ -2,7 +2,7 @@
 /**
  * --------------------------------------------------------------
  * MITS CronDatabaseBackups - Database Synchronization
- * Version: 1.8.2
+ * Version: 1.8.13
  * --------------------------------------------------------------
  */
 
@@ -19,11 +19,7 @@ function mits_cdb_sync_admin_h($value)
 function mits_cdb_sync_admin_token()
 {
     if (empty($_SESSION['MITS_CDB_SYNC_TOKEN'])) {
-        try {
-            $_SESSION['MITS_CDB_SYNC_TOKEN'] = bin2hex(random_bytes(32));
-        } catch (Exception $e) {
-            $_SESSION['MITS_CDB_SYNC_TOKEN'] = md5(uniqid(mt_rand(), true));
-        }
+        $_SESSION['MITS_CDB_SYNC_TOKEN'] = bin2hex(random_bytes(32));
     }
     return $_SESSION['MITS_CDB_SYNC_TOKEN'];
 }
