@@ -124,7 +124,6 @@ class mits_cron_database_backups
     public function install(): void
     {
         $this->dbChanges();
-				xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_HASH', '" . md5(time() . xtc_rand(0, 99999)) . "', 6, 2, NULL, now())");
     }
 
     /**
@@ -160,7 +159,7 @@ class mits_cron_database_backups
         }
 
         if (!defined($this->name . '_HASH')) {
-            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_HASH', '" . md5(time() . xtc_rand(0, 99999)) . "', 6, 2, NULL, now())");
+            xtc_db_query("INSERT INTO " . TABLE_CONFIGURATION . " (" . $this->default_columns . ", date_added) VALUES ('" . $this->name . "_HASH', '" . bin2hex(random_bytes(32)) . "', 6, 2, NULL, now())");
         }
 
         if (!defined($this->name . '_GZIP')) {

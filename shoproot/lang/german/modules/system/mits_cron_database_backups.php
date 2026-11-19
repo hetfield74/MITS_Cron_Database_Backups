@@ -17,7 +17,7 @@
 
 $modulname = strtoupper('mits_cron_database_backups');
 $module_key = 'MODULE_' . $modulname;
-$mits_default_hash = '3p7R9VAZcbtUCptYH212u4n7jtVBg4Wy';
+$mits_default_hash = '';
 $mits_hash = defined($module_key . '_HASH') ? constant($module_key . '_HASH') : $mits_default_hash;
 
 if (defined($module_key . '_STATUS') && constant($module_key . '_STATUS') == 'true') {
